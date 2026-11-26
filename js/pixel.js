@@ -78,6 +78,17 @@
       this.rect(x, y, w, 1, c); this.rect(x, y + h - 1, w, 1, c);
       this.rect(x, y, 1, h, c); this.rect(x + w - 1, y, 1, h, c);
     }
+    // copy another buffer ({w, h, d}) in, skipping its transparent pixels
+    blit(src, dx, dy) {
+      for (let y = 0; y < src.h; y++) {
+        const Y = y + dy;
+        if (Y < 0 || Y >= this.h) continue;
+        for (let x = 0; x < src.w; x++) {
+          const c = src.d[y * src.w + x], X = x + dx;
+          if (c && X >= 0 && X < this.w) this.d[Y * this.w + X] = c;
+        }
+      }
+    }
     flush() { this.ctx.putImageData(this.img, 0, 0); }
   };
 

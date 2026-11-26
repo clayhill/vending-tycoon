@@ -4,7 +4,12 @@
 (function () {
   'use strict';
   const T = new URLSearchParams(document.currentScript.src.split('?')[1] || '').get('t') || Date.now();
-  const files = ['js/pixel.js', 'js/font.js', 'js/scene.js', 'js/machines.js', 'js/' + document.body.dataset.page + '.js'];
+  const SHARED = ['js/pixel.js', 'js/font.js', 'js/scene.js', 'js/machines.js', 'js/icons.js'];
+  const PAGES = {
+    landing: ['js/landing.js'],
+    soda: ['js/soda/config.js', 'js/soda/sim.js', 'js/soda/people.js', 'js/soda/ui.js'],
+  };
+  const files = SHARED.concat(PAGES[document.body.dataset.page] || []);
   (function next(i) {
     if (i === files.length) return;
     const s = document.createElement('script');

@@ -4,28 +4,84 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Soda Cans — Vending Tycoon</title>
+  <meta name="description" content="Run a soda can vending machine: set prices, restock the shelves, keep the coin box emptied and the customers happy.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-page="soda">
+<body data-page="soda" class="game-page">
   <canvas id="bg" class="bg" aria-hidden="true"></canvas>
   <div class="crt" aria-hidden="true"></div>
 
-  <main class="screen stage">
-    <a class="back" href="index.html"><kbd>ESC</kbd> BACK</a>
-    <h1 class="logo"><canvas id="logo" role="img" aria-label="Soda Cans"></canvas></h1>
-    <div class="exhibit">
-      <canvas id="machine" role="img" aria-label="A pink soda can vending machine with a neon SODA sign"></canvas>
-      <canvas id="tape" class="tape" role="img" aria-label="Under construction"></canvas>
+  <header class="bar">
+    <a class="back" href="index.html"><kbd>ESC</kbd> MENU</a>
+    <div class="clock"><span id="day">DAY 1</span> <b id="time">08:00</b></div>
+    <div class="wx" title="Weather"><canvas id="wx" aria-hidden="true"></canvas><span id="temp">22°C</span></div>
+    <div class="stars" id="rating" role="img" aria-label="Rating 3 of 5"><canvas id="stars" aria-hidden="true"></canvas></div>
+    <div class="speed" role="group" aria-label="Game speed">
+      <button class="btn small" data-speed="0" title="Pause (space)">II</button>
+      <button class="btn small" data-speed="1" title="Normal speed (1)">1X</button>
+      <button class="btn small" data-speed="2" title="Fast (2)">2X</button>
+      <button class="btn small" data-speed="5" title="Faster (3)">5X</button>
+      <button class="btn small" data-speed="10" title="Fastest (4)">10X</button>
     </div>
-    <div class="dialog">
-      <p class="label">STAGE 01 · SODA CANS</p>
-      <p>This machine is still being stocked. Soon you will set prices, restock the shelves and keep the coins rolling in.</p>
-      <p class="blink">COMING SOON</p>
-    </div>
+  </header>
+
+  <main class="game">
+    <section class="panel" aria-labelledby="machine-title">
+      <h2 id="machine-title">MACHINE <span id="state" class="pill">RUNNING</span></h2>
+      <div class="row big"><span>WALLET</span><b id="wallet">$40.00</b></div>
+      <div class="row"><span>COIN BOX</span><b id="cashbox">$0.00</b></div>
+      <div class="meter" aria-hidden="true"><i id="cashMeter"></i></div>
+      <button class="btn" id="collect">COLLECT CASH <kbd>C</kbd></button>
+      <button class="btn" id="restockAll">RESTOCK ALL <span id="restockAllCost"></span></button>
+      <button class="btn warn" id="repair" hidden>REPAIR JAM $5.00</button>
+      <h2>TODAY</h2>
+      <dl class="stats">
+        <dt>CUSTOMERS</dt><dd id="sCustomers">0</dd>
+        <dt>CANS SOLD</dt><dd id="sSold">0</dd>
+        <dt>SALES</dt><dd id="sRevenue">$0.00</dd>
+        <dt>PROFIT</dt><dd id="sProfit">$0.00</dd>
+        <dt>WALKED OFF</dt><dd id="sLost">0</dd>
+      </dl>
+      <p class="why" id="sWhy"></p>
+      <button class="btn ghost" id="newGame">NEW GAME</button>
+    </section>
+
+    <section class="stagewrap">
+      <canvas id="stage" role="img" aria-label="The soda machine on the street, with customers queuing for it"></canvas>
+      <p class="hint">CLICK A SLOT ON THE MACHINE TO MANAGE IT</p>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </section>
+
+    <section class="panel" aria-labelledby="slot-title">
+      <h2 id="slot-title">SLOT <span id="slotName">A1</span></h2>
+      <div class="picker">
+        <button class="btn small" id="prevProduct" aria-label="Previous drink">◀</button>
+        <canvas id="slotCan" aria-hidden="true"></canvas>
+        <b id="productName">NEON COLA</b>
+        <button class="btn small" id="nextProduct" aria-label="Next drink">▶</button>
+      </div>
+      <div class="row"><span>STOCK</span><b id="stock">7/7</b></div>
+      <div class="meter" aria-hidden="true"><i id="stockMeter"></i></div>
+      <div class="row price">
+        <span>PRICE</span>
+        <button class="btn small" id="priceDown" aria-label="Lower the price">−</button>
+        <b id="price">$1.25</b>
+        <button class="btn small" id="priceUp" aria-label="Raise the price">+</button>
+      </div>
+      <div class="row dim"><span>CAN COSTS YOU</span><span id="cost">$0.45</span></div>
+      <div class="row dim"><span>MARGIN PER CAN</span><span id="margin">$0.80</span></div>
+      <button class="btn" id="restock">RESTOCK SLOT <span id="restockCost"></span></button>
+      <p class="note">Swapping the drink sends this slot's cans back to the supplier at cost.</p>
+      <h2>LAST 7 DAYS</h2>
+      <canvas id="chart" role="img" aria-label="Sales and profit of the last seven days"></canvas>
+      <p class="legend"><i class="k-sales"></i>SALES <i class="k-profit"></i>PROFIT <i class="k-loss"></i>LOSS</p>
+    </section>
   </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>const s = document.createElement('script'); s.src = 'js/boot.js?t=' + Date.now(); document.body.appendChild(s);</script>
 </body>

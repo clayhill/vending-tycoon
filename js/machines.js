@@ -9,6 +9,7 @@
     sign: '#120428', neon: '#01cdfe', neonDim: '#0b4f7a', neonOff: '#16365a',
     glass: '#170a36', glassHi: '#2a1458', shelf: '#4fb6e0', metal: '#d8d2f0', metalLo: '#7a6fae', panel: '#3a0d4f',
     lcd: '#0a2a1e', lcdOn: '#05ffa1', slot: '#04000c', white: '#ffffff', shadow: '#05000d',
+    low: '#ff9e3d', sel: '#fffb96', coil: '#3a2470', alarm: '#ff2a6d', alarmDim: '#5a0a2a',
     lockBody: '#22093f', lockDot: '#2f0f55', lockEdge: '#6b3aa0', lockQ: '#ff71ce',
   })) P[k] = VT.rgb(v);
   const CANS = ['#01cdfe', '#05ffa1', '#fffb96', '#b967ff', '#ff9e3d'].map(VT.rgb);
@@ -33,7 +34,10 @@
     fb.rect(x + 1, y + 7, 5, 1, P.metalLo);
   }
 
-  function soda(fb, t) {
+  // view (optional) is the live machine: { slots: [{ color, stock, cap }],
+  // sel: selected slot, sign: 'SODA' | 'JAM!' | 'FULL', drop: { at, color } }.
+  // Without it the machine is a decorative showpiece, fully stocked.
+  function soda(fb, t, view) {
     fb.clear();
     shadow(fb, 8, 55);
     // cabinet: front face, a darker side face for depth, outlined in ink
@@ -49,11 +53,13 @@
     // neon sign
     fb.rect(11, 6, 37, 13, P.ink);
     fb.rect(12, 7, 35, 11, P.sign);
-    const flick = t % 6.2, on = !(flick > 3.1 && flick < 3.22) && !(flick > 3.3 && flick < 3.36);
-    const x = 12 + ((35 - VT.textWidth('SODA')) >> 1);
-    if (on) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) VT.text(fb, 'SODA', x + dx, 9 + dy, 1, P.neonDim);
-    VT.text(fb, 'SODA', x, 9, 1, on ? P.neon : P.neonOff);
-    if (on) VT.text(fb, 'SODA', x, 9, 1, (gx, gy) => (gy < 2 ? VT.mix(P.neon, P.white, 0.6) : P.neon));
+    const word = (view && view.sign) || 'SODA', alarm = word !== 'SODA';
+    const flick = t % 6.2, on = alarm ? Math.floor(t * 2.5) % 2 === 0 : !(flick > 3.1 && flick < 3.22) && !(flick > 3.3 && flick < 3.36);
+    const tube = alarm ? P.alarm : P.neon, glow = alarm ? P.alarmDim : P.neonDim;
+    const x = 12 + ((35 - VT.textWidth(word)) >> 1);
+    if (on) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) VT.text(fb, word, x + dx, 9 + dy, 1, glow);
+    VT.text(fb, word, x, 9, 1, on ? tube : alarm ? P.alarmDim : P.neonOff);
+    if (on) VT.text(fb, word, x, 9, 1, (gx, gy) => (gy < 2 ? VT.mix(tube, P.white, 0.6) : tube));
 
     // window with three columns of cans on four shelves
     fb.rect(11, 21, 29, 44, P.ink);
@@ -61,9 +67,18 @@
     fb.rect(13, 23, 25, 40, P.glass);
     for (let r = 0; r < 4; r++) {
       const y = 24 + r * 10;
-      for (let c = 0; c < 3; c++) can(fb, 14 + c * 8, y, CANS[(r + c * 2) % CANS.length]);
       fb.rect(13, y + 8, 25, 1, P.shelf);
       fb.rect(13, y + 9, 25, 1, P.glassHi);
+      for (let c = 0; c < 3; c++) {
+        const cx = 14 + c * 8;
+        if (!view) { can(fb, cx, y, CANS[(r + c * 2) % CANS.length]); continue; }
+        const i = r * 3 + c, s = view.slots[i];
+        if (s.stock > 0) can(fb, cx, y, s.color);
+        else for (let k = 0; k < 4; k++) fb.rect(cx + (k & 1), y + 1 + k * 2, 6, 1, P.coil); // the empty spiral
+        if (view.sel === i && Math.floor(t * 3) % 3) fb.frame(cx - 1, y - 1, 9, 10, P.sel);
+        // stock pips along the shelf edge
+        for (let k = 0; k < s.cap; k++) fb.px(cx + k, y + 8, k < s.stock ? (s.stock <= 2 ? P.low : P.lcdOn) : P.ink);
+      }
     }
     // a reflection sweeping across the glass
     const sweep = ((t * 16) % 110) - 30;
@@ -97,10 +112,11 @@
     fb.rect(12, 70, 27, 9, P.slot);
     fb.rect(12, 70, 27, 2, P.metalLo);
     fb.rect(12, 70, 27, 1, P.metal);
-    const p = (t % 3.4) / 3.4;
-    if (p > 0.18 && p < 0.86) {
-      const bounce = p < 0.26 ? Math.round(Math.sin(((p - 0.18) / 0.08) * Math.PI) * -2) : 0;
-      const c = CANS[Math.floor(t / 3.4) % CANS.length], y = 74 + bounce;
+    // decorative: a can every few seconds; live: the last can sold
+    const age = view ? (view.drop ? t - view.drop.at : 99) : ((t % 3.4) / 3.4 - 0.18) * 3.4;
+    if (age >= 0 && age < (view ? 2.4 : 2.3)) {
+      const bounce = age < 0.27 ? Math.round(Math.sin((age / 0.27) * Math.PI) * -2) : 0;
+      const c = view ? view.drop.color : CANS[Math.floor(t / 3.4) % CANS.length], y = 74 + bounce;
       fb.rect(21, y, 9, 5, c);
       fb.rect(21, y + 1, 9, 1, VT.mix(c, P.white, 0.55));
       fb.rect(21, y + 4, 9, 1, VT.mix(c, P.ink, 0.4));
@@ -165,6 +181,9 @@
     const sy = Math.floor((t * 22) % 120) - 16;
     for (let x = 0; x < 64; x++) if (fb.d[sy * 64 + x]) fb.blend(x, sy, P.lockEdge, 0.5);
   }
+
+  VT.drawSoda = soda;
+  VT.drawCan = can;
 
   // Bind a canvas to a machine's art. size: art pixels per CSS-pixel step.
   VT.art = function (canvas, kind, size) {

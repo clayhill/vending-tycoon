@@ -1,0 +1,9 @@
+{
+  "name": "vending-tycoon",
+  "private": true,
+  "description": "Vending Tycoon: a vending machine simulator in vaporwave pixel art",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node test/sim.js"
+  }
+}
