@@ -225,3 +225,7 @@ body.warp .screen { animation: warp .45s steps(6) forwards; }
   .blink, .blink-slow, .cursor, .slot.shake { animation: none; }
 }
 .row b.small { font: 10px/1.2 'Press Start 2P', monospace; color: var(--text); }
+
+/* coffee supplies: name, amount and a refill button on one row */
+.row.supply > span { flex: 1; }
+.row.supply .btn { min-width: 76px; }

@@ -2,7 +2,7 @@
 
 **Try it live: [clayhill.github.io/vending-tycoon](https://clayhill.github.io/vending-tycoon/)**
 
-![Launch page: pick a vending machine; the soda machine is open, three more are still locked](docs/screenshots/landing.png)
+![Launch page: pick one of four vending machines: soda, snacks, gumballs or coffee](docs/screenshots/landing.png)
 
 A vending machine simulator that runs in your browser, styled as a vaporwave arcade game:
 neon grids, sunsets and crisp, high-resolution pixel art. Pick a machine on the launch page and
@@ -50,10 +50,27 @@ flavour: a turn of the crank hands out a random ball, so the mix in the globe is
   the neighbourhood talking, and the buzz brings in a bigger crowd for the next few days.
 - **Top up the globe** to share its free space among the flavours, or add one flavour at a time.
 
+## Coffee
+
+Six hot drinks brewed to order from one set of supplies: beans, milk, cocoa and cups. Each drink has
+its own recipe and price, and a brew takes a few minutes while the customer waits, so the morning
+commute builds a line.
+
+![The coffee machine on a cold, rainy morning: a hot cocoa pouring while commuters queue](docs/screenshots/coffee.png)
+
+- **Shared supplies.** A latte takes a shot and two cups of milk; a hot cocoa takes no beans at all.
+  Running out of one supply stops every drink that needs it. Refill one supply or everything.
+- **Sour milk.** Milk keeps for two days after you fill an empty tank, and topping it up keeps the
+  old date. A drink made with sour milk disgusts its buyer; pour the milk away (`B`) and it counts as
+  waste.
+- **The grounds bin.** Every shot leaves a puck of grounds. When the bin is full the machine stops
+  until you empty it (`G`).
+- Cold and rainy days bring more customers, who pay more; the kiosk's rent is the highest of all.
+
 ## How it's built
 
 Every machine runs on one engine, `js/vend/`: the simulation, the customers and the game screen. A
-machine adds its config (`js/soda/config.js`, `js/snack/config.js`, `js/gumball/config.js`) and its pixel art
+machine adds its config (`js/soda/config.js`, `js/snack/config.js`, `js/gumball/config.js`, `js/coffee/config.js`) and its pixel art
 (`js/machines.js`). The simulation runs without the page, so `npm test` plays a month of each machine
 in Node and checks that the money adds up. Games save themselves in your browser.
 

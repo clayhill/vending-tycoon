@@ -4,7 +4,8 @@
  *
  *   VT.vendGame({ K: VT.SODA, draw: VT.drawSoda, icon: (fb, product) => … })
  *
- * Panels for extras (stale snacks, coil wear, the gumball globe) are wired
+ * Panels for extras (stale snacks, coil wear, the gumball globe, coffee
+ * supplies) are wired
  * only when the page has their elements. The game saves itself in this browser every few
  * seconds, under the machine's own key. */
 (function (VT) {
@@ -13,7 +14,10 @@
   VT.vendGame = function ({ K, draw, icon }) {
     const A = VT.vend(K), S = K.STAGE, PR = K.PRODUCTS, ART = K.ART;
     const $ = id => document.getElementById(id);
-    const PC = PR.map(p => VT.rgb(p.color));
+    const PC = PR.map(p => VT.rgb(p.color)), LIQ = PR.map(p => p.liquid && VT.rgb(p.liquid));
+    const SUP = K.SUPPLY ? Object.keys(K.SUPPLY) : [];
+    // on a gumball or coffee machine the arrows step through the slots
+    const PICK = !!(K.LOTTERY || K.SUPPLY);
 
     const root = document.documentElement;
     const setPx = () => root.style.setProperty('--px', VT.scale() + 'px');
@@ -62,11 +66,22 @@
         lastSale = st.lastSale.n;
         drop = { at: t, color: PC[st.lastSale.p], shape: PR[st.lastSale.p].shape, two: st.lastSale.two };
       }
+      const sign = st.jam ? (K.JAM_SIGN || 'JAM!') : A.full(st) ? 'FULL' : A.groundsFull(st) ? 'BIN!' : null;
+      if (K.SUPPLY) {
+        const c = st.customers.find(o => o.brewing);
+        return {
+          slots: st.slots.map((s, i) => ({ color: PC[s.p], liquid: LIQ[s.p], can: A.canMake(st, i) > 0 })),
+          sel, sign, price: st.slots[sel].price,
+          brew: c ? { liquid: LIQ[c.cup], color: PC[c.cup], k: Math.min(1, (1 - c.timer / PR[c.cup].brew) * 1.15) } : null,
+          sup: SUP.map(k => ({ k: st.sup[k] / K.SUPPLY[k].cap, sour: A.sour(st, k) })),
+          grounds: st.grounds / K.GROUNDS,
+        };
+      }
       return {
         slots: st.slots.map(s => ({ color: PC[s.p], shape: PR[s.p].shape, prize: PR[s.p].prize, stock: s.stock, cap: K.CAP, stale: A.staleCount(st, s), hang: s.hang })),
         sel, drop, busy: st.customers.some(c => c.phase === 'use'),
         total: A.total(st), cap: K.GLOBE || K.CAP, price: st.slots[0].price,
-        sign: st.jam ? 'JAM!' : A.full(st) ? 'FULL' : null,
+        sign,
       };
     }
 
@@ -151,8 +166,9 @@
       if (shown.rating !== r) { shown.rating = r; drawStars(r); $('rating').setAttribute('aria-label', `Rating ${r.toFixed(1)} of 5`); }
 
       const full = A.full(st);
-      set('state', st.jam ? 'JAMMED' : full ? 'BOX FULL' : 'RUNNING');
-      $('state').className = 'pill' + (st.jam || full ? ' alarm' : '');
+      const down = A.down(st);
+      set('state', st.jam ? (K.JAM_STATE || 'JAMMED') : full ? 'BOX FULL' : down ? 'BIN FULL' : 'RUNNING');
+      $('state').className = 'pill' + (down ? ' alarm' : '');
       moneyTo('wallet', st.wallet); moneyTo('cashbox', st.cashbox);
       $('cashMeter').style.width = Math.min(100, (st.cashbox / K.CASHBOX) * 100) + '%';
       $('cashMeter').classList.toggle('hot', st.cashbox > K.CASHBOX * 0.75);
@@ -181,6 +197,28 @@
         const turns = st.today.customers - (st.today.lostOut + st.today.lostPrice + st.today.lostQueue + st.today.lostBroken);
         set('sPerKid', turns > 0 ? (st.today.sold / turns).toFixed(1) : '—');
       }
+      // coffee: the supplies, the milk's date and the grounds bin
+      if (K.SUPPLY) {
+        for (const k of SUP) {
+          const S = K.SUPPLY[k], n = st.sup[k], sour = A.sour(st, k), cost = A.refillCost(st, k);
+          set('sup-' + k, sour ? 'SOUR!' : n + '/' + S.cap);
+          $('sup-' + k).classList.toggle('neg', sour || n < S.cap * 0.2);
+          set('refillCost-' + k, cost ? VT.money(cost) : '');
+          prop('refill-' + k, 'disabled', !cost || st.wallet < S.cost);
+          if (S.life) {
+            const left = st.supExp[k] - st.t; // minutes
+            set('fresh-' + k, !n ? '—' : left <= 0 ? 'SOUR!' : left < 60 ? Math.ceil(left) + ' MIN' : left < 24 * 60 ? Math.floor(left / 60) + 'H' : Math.floor(left / 1440) + 'D ' + Math.floor((left % 1440) / 60) + 'H');
+            $('fresh-' + k).classList.toggle('neg', !!n && left < 6 * 60);
+            prop('drain', 'disabled', !n);
+            prop('drain', 'className', 'btn small' + (sour ? ' warn' : ''));
+          }
+        }
+        set('grounds', st.grounds + '/' + K.GROUNDS);
+        $('groundsMeter').style.width = (st.grounds / K.GROUNDS) * 100 + '%';
+        $('groundsMeter').classList.toggle('hot', st.grounds >= K.GROUNDS * 0.75);
+        prop('clean', 'disabled', !st.grounds);
+        prop('clean', 'className', 'btn' + (A.groundsFull(st) ? ' warn' : ''));
+      }
       const staleN = A.staleTotal(st);
       set('binAllCount', staleN ? String(staleN) : '');
       prop('binAll', 'disabled', !staleN);
@@ -203,6 +241,14 @@
         $('stockMeter').style.width = share * 100 + '%';
         $('stockMeter').classList.toggle('hot', !s.stock && !p.prize);
         set('batch', String(Math.min(K.BATCH, K.GLOBE - total)));
+      } else if (K.SUPPLY) {
+        const n = A.canMake(st, sel), unit = { beans: 'SHOT', milk: 'MILK', cocoa: 'COCOA', cups: 'CUP' };
+        set('stock', n ? n + ' MORE' : 'OUT');
+        $('stock').classList.toggle('neg', n < 5);
+        $('stockMeter').style.width = Math.min(100, (n / 40) * 100) + '%';
+        $('stockMeter').classList.toggle('hot', n < 5);
+        set('recipe', Object.entries(p.use).map(([k, m]) => (m > 1 ? m + ' ' : '') + (unit[k] || k.toUpperCase())).join(' + '));
+        set('brewTime', p.brew + ' MIN');
       } else {
         set('stock', s.stock + '/' + K.CAP);
         $('stockMeter').style.width = (s.stock / K.CAP) * 100 + '%';
@@ -211,7 +257,7 @@
       set('price', VT.money(s.price)); set('cost', VT.money(p.cost)); moneyTo('margin', s.price - p.cost);
       const rc = A.restockCost(st, sel);
       set('restockCost', rc ? VT.money(rc) : '');
-      $('restock').disabled = !rc || st.wallet < p.cost;
+      prop('restock', 'disabled', !rc || st.wallet < p.cost);
       $('priceDown').disabled = s.price <= K.PRICE_MIN; $('priceUp').disabled = s.price >= K.PRICE_MAX;
       // freshness (snacks)
       if ($('fresh')) {
@@ -263,12 +309,14 @@
     on('binAll', () => A.binAllStale(st));
     on('bin', () => A.binStale(st, sel));
     on('restock', () => A.restock(st, sel));
+    on('clean', () => A.clean(st));
+    on('drain', () => A.drain(st, 'milk'));
+    for (const k of SUP) on('refill-' + k, () => A.refill(st, k));
     on('priceUp', () => A.setPrice(st, sel, st.slots[sel].price + K.PRICE_STEP));
     on('priceDown', () => A.setPrice(st, sel, st.slots[sel].price - K.PRICE_STEP));
-    // on a gumball machine the arrows step through the flavours in the globe
     const N = st.slots.length;
-    on('prevProduct', () => { if (K.LOTTERY) sel = (sel + N - 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + PR.length - 1) % PR.length); });
-    on('nextProduct', () => { if (K.LOTTERY) sel = (sel + 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + 1) % PR.length); });
+    on('prevProduct', () => { if (PICK) sel = (sel + N - 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + PR.length - 1) % PR.length); });
+    on('nextProduct', () => { if (PICK) sel = (sel + 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + 1) % PR.length); });
     document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => { speed = +b.dataset.speed; refresh(); }));
     let sure = 0;
     $('newGame').addEventListener('click', () => {
@@ -299,7 +347,8 @@
       else if (k === '-' || k === '_') click('priceDown');
       else if (k === 'r' || k === 'R') click('restock');
       else if (k === 'c' || k === 'C') click('collect');
-      else if (k === 'b' || k === 'B') click('bin');
+      else if (k === 'b' || k === 'B') { click('bin'); click('drain'); }
+      else if (k === 'g' || k === 'G') click('clean');
       else if (k === 's' || k === 'S') click('service');
     });
 

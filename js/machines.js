@@ -1,5 +1,6 @@
 /* Pixel art of the machines, drawn into a 64×88 framebuffer each frame:
- * the soda machine, and dark silhouettes of the machines still locked. */
+ * soda, snacks, gumballs and coffee, and a dark silhouette for a machine
+ * still locked. */
 (function (VT) {
   'use strict';
 
@@ -127,8 +128,8 @@
     fb.rect(11, 84, 5, 2, P.ink); fb.rect(43, 84, 5, 2, P.ink);
   }
 
-  // Dark machines, so you can guess what is coming: a wide snack machine,
-  // a gumball globe and a coffee kiosk. A pink "?" flickers on each.
+  // Dark machines, so you can guess what is coming (none are locked now, but
+  // the launch page still supports it). A pink "?" flickers on each.
   function dots(fb, x, y, w, h) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) fb.px(i, j, (i + j) % 2 ? P.lockBody : P.lockDot);
   }
@@ -423,6 +424,118 @@
   }
   VT.drawGumballMachine = gumball;
 
+  // ---- the coffee machine ----
+  const CF = {};
+  for (const [k, v] of Object.entries({
+    body: '#8a3ab9', bodyHi: '#c07ae6', bodyLo: '#5e2288', side: '#45166a', sideLo: '#2f0d4a',
+    neon: '#ff9e3d', neonDim: '#6a3410', neonOff: '#3a1a10', key: '#2a1248', keyLo: '#1a0a30',
+    cup: '#f1e6ff', cupLo: '#b8a8d8', steam: '#f1e6ff', glow: '#ff9e3d', bay: '#0a0418',
+    beans: '#c07a4a', milk: '#f1e6ff', cocoa: '#ff9ee0', cups: '#01cdfe', sour: '#9be05a',
+  })) CF[k] = VT.rgb(v);
+  const SHOW_DRINKS = [['#ff9e3d', '#4a2210'], ['#01cdfe', '#3a1a0c'], ['#f1e6ff', '#c99a6e'], ['#ff71ce', '#d9b08a'], ['#b967ff', '#7a4a2e'], ['#05ffa1', '#6a3a22']]
+    .map(([c, l]) => ({ color: VT.rgb(c), liquid: VT.rgb(l), can: true }));
+
+  // a paper cup 7 wide and 9 tall, k (0–1) full, with a sleeve in its colour
+  function coffeeCup(fb, x, y, liquid, sleeve, k) {
+    fb.rect(x, y, 7, 1, CF.cupLo);
+    fb.rect(x, y + 1, 7, 8, CF.cup);
+    fb.rect(x + 6, y + 1, 1, 8, CF.cupLo);
+    const n = Math.round(k * 6);
+    if (n) fb.rect(x + 1, y + 7 - n, 5, n, liquid);
+    fb.rect(x, y + 4, 7, 3, sleeve); fb.rect(x + 6, y + 4, 1, 3, VT.mix(sleeve, P.ink, 0.4));
+    fb.rect(x + 1, y + 9, 5, 1, CF.cupLo);
+  }
+  VT.drawCoffeeCup = coffeeCup;
+
+  // view (optional): { slots: [{ color, liquid, can }], sel, sign, price,
+  // brew: { liquid, color, k } while a drink pours, sup: [{ k, sour }], grounds }
+  function coffee(fb, t, view) {
+    fb.clear();
+    shadow(fb, 6, 57);
+    fb.rect(7, 3, 50, 81, P.ink);
+    fb.rect(8, 4, 43, 79, CF.body);
+    fb.rect(8, 4, 43, 1, CF.bodyHi); fb.rect(8, 4, 2, 79, CF.bodyHi);
+    fb.rect(49, 4, 2, 79, CF.bodyLo);
+    fb.rect(51, 4, 1, 79, P.ink);
+    fb.rect(52, 4, 4, 79, CF.side);
+    for (let y = 10; y < 80; y += 5) fb.rect(53, y, 2, 2, CF.sideLo);
+
+    // neon sign
+    fb.rect(10, 6, 39, 13, P.ink);
+    fb.rect(11, 7, 37, 11, P.sign);
+    const word = (view && view.sign) || 'COFFEE', alarm = word !== 'COFFEE';
+    const flick = (t + 4.1) % 6.3, on = alarm ? Math.floor(t * 2.5) % 2 === 0 : !(flick > 3.0 && flick < 3.12);
+    const tube = alarm ? P.alarm : CF.neon, glow = alarm ? P.alarmDim : CF.neonDim;
+    const wx = 11 + ((37 - VT.textWidth(word)) >> 1);
+    if (on) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) VT.text(fb, word, wx + dx, 9 + dy, 1, glow);
+    VT.text(fb, word, wx, 9, 1, on ? (gx, gy) => (gy < 2 ? VT.mix(tube, P.white, 0.6) : tube) : CF.neonOff);
+
+    // six drink buttons: a stripe in the drink's colour, a little cup, a light
+    fb.rect(9, 21, 41, 21, P.ink);
+    fb.rect(10, 22, 39, 19, CF.keyLo);
+    const slots = view ? view.slots : SHOW_DRINKS;
+    const lit = view ? -1 : Math.floor(t * 0.8) % 6;
+    for (let i = 0; i < 6; i++) {
+      const x = 10 + (i % 3) * 14, y = 24 + Math.floor(i / 3) * 9, s = slots[i];
+      const c = s.can ? s.color : VT.mix(s.color, P.ink, 0.7);
+      fb.rect(x, y, 12, 7, P.ink);
+      fb.rect(x + 1, y + 1, 10, 5, i === lit ? VT.mix(CF.key, s.color, 0.35) : CF.key);
+      fb.rect(x + 1, y + 1, 10, 1, c);
+      const cup = s.can ? CF.cup : CF.cupLo;
+      fb.rect(x + 3, y + 2, 4, 3, cup); fb.rect(x + 3, y + 2, 4, 1, s.liquid); fb.px(x + 7, y + 3, cup);
+      fb.rect(x + 2, y + 5, 6, 1, CF.cupLo);
+      fb.px(x + 9, y + 3, s.can ? P.lcdOn : P.alarm);
+      if (view && view.sel === i && Math.floor(t * 3) % 3) fb.frame(x - 1, y - 1, 14, 9, P.sel);
+    }
+
+    // price display, coin slot and the supply gauges
+    fb.rect(10, 44, 19, 8, P.ink); fb.rect(11, 45, 17, 6, P.lcd);
+    const cents = view ? Math.round(view.price * 100) : 250 + 25 * (Math.floor(t / 2) % 3);
+    VT.tiny(fb, String(Math.floor(cents / 100)), 12, 45, P.lcdOn);
+    fb.px(16, 49, P.lcdOn);
+    VT.tiny(fb, String(cents % 100).padStart(2, '0'), 18, 45, P.lcdOn);
+    fb.rect(31, 44, 5, 8, P.metal); fb.rect(32, 44, 3, 1, P.white); fb.rect(33, 45, 1, 6, P.slot);
+    const gauges = view ? view.sup : [{ k: 0.8 }, { k: 0.6 }, { k: 0.9 }, { k: 0.7 }];
+    const GC = [CF.beans, CF.milk, CF.cocoa, CF.cups];
+    fb.rect(38, 44, 11, 8, P.ink);
+    gauges.forEach((g, j) => {
+      const x = 39 + j * 2.5 | 0, h = Math.round(g.k * 6);
+      fb.rect(x, 45, 2, 6, CF.keyLo);
+      const c = g.sour ? (Math.floor(t * 3) % 2 ? CF.sour : P.ink) : g.k < 0.2 ? P.alarm : GC[j % 4];
+      if (h) fb.rect(x, 51 - h, 2, h, c);
+    });
+
+    // the brewing bay: nozzle, the cup on the drip tray, the pour and steam
+    fb.rect(15, 54, 29, 24, P.ink);
+    fb.rect(16, 55, 27, 22, CF.bay);
+    const b = view ? view.brew : (() => {
+      const u = (t % 6) / 6, d = SHOW_DRINKS[Math.floor(t / 6) % 6];
+      return u < 0.85 ? { liquid: d.liquid, color: d.color, k: Math.min(1, u / 0.65) } : null;
+    })();
+    if (b) for (let y = 55; y < 59; y++) for (let x = 16; x < 43; x++) if (VT.bayer(x, y) < (59 - y) / 8) fb.px(x, y, VT.mix(CF.bay, CF.glow, 0.25));
+    fb.rect(25, 55, 9, 3, P.metal); fb.rect(25, 57, 9, 1, P.metalLo);
+    fb.rect(28, 58, 3, 2, P.metalLo);
+    if (b) {
+      if (b.k < 1) for (let y = 60; y < 75 - Math.round(b.k * 6); y++) fb.px(29, y, (y + Math.floor(t * 12)) % 3 ? b.liquid : VT.mix(b.liquid, P.white, 0.3));
+      coffeeCup(fb, 26, 66, b.liquid, b.color, b.k);
+      if (b.k > 0.4) for (let k = 0; k < 3; k++) {
+        const sy = 64 - ((Math.floor(t * 6) + k * 3) % 8), sx = 27 + k * 2 + (((sy + k) >> 1) & 1);
+        fb.blend(sx, sy, CF.steam, 0.55);
+      }
+    }
+    // drip tray
+    fb.rect(17, 76, 25, 1, P.metalLo);
+    for (let x = 18; x < 41; x += 2) fb.px(x, 76, P.metal);
+
+    // the grounds drawer, with a light that turns red when it is nearly full
+    fb.rect(10, 79, 39, 3, CF.bodyLo);
+    fb.rect(22, 79, 15, 3, P.ink); fb.rect(23, 80, 13, 1, P.metalLo);
+    const gr = view ? view.grounds : 0.3;
+    fb.rect(39, 80, 2, 1, gr >= 1 ? (Math.floor(t * 3) % 2 ? P.alarm : P.ink) : gr > 0.75 ? P.low : P.lcdOn);
+    fb.rect(9, 84, 5, 2, P.ink); fb.rect(45, 84, 5, 2, P.ink);
+  }
+  VT.drawCoffee = coffee;
+
   // Bind a canvas to a machine's art. size: art pixels per CSS-pixel step.
   VT.art = function (canvas, kind, size) {
     const fb = new VT.FB(canvas);
@@ -437,6 +550,7 @@
         if (kind === 'soda') soda(fb, t);
         else if (kind === 'snacks') snack(fb, t);
         else if (kind === 'gumballs') gumball(fb, t);
+        else if (kind === 'coffees') coffee(fb, t);
         else locked(fb, t, kind);
         fb.flush();
       },

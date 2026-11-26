@@ -6,9 +6,10 @@ globalThis.VT = {};
 require('../js/soda/config.js');
 require('../js/snack/config.js');
 require('../js/gumball/config.js');
+require('../js/coffee/config.js');
 require('../js/vend/sim.js');
 const VT = globalThis.VT;
-const SODA = VT.vend(VT.SODA), SNACK = VT.vend(VT.SNACK), GUM = VT.vend(VT.GUMBALL);
+const SODA = VT.vend(VT.SODA), SNACK = VT.vend(VT.SNACK), GUM = VT.vend(VT.GUMBALL), COFFEE = VT.vend(VT.COFFEE);
 
 let failed = 0;
 function check(ok, what) {
@@ -16,13 +17,18 @@ function check(ok, what) {
 }
 
 // A simple operator: fixes the machine, empties the coin box, bins stale
-// snacks, services worn coils and tops up slots.
+// snacks, services worn coils and tops up slots (or, for coffee, empties the
+// grounds and refills what runs low or goes sour).
 function attentive(A, st) {
   if (st.jam) A.repair(st);
   if (A.K.STUCK && st.wear >= 7) A.service(st);
   if (st.cashbox > 40) A.collect(st);
   A.binAllStale(st);
   if (A.K.LOTTERY) { if (A.total(st) < 80) A.restockAll(st); }
+  else if (A.K.SUPPLY) {
+    if (st.grounds > 35) A.clean(st);
+    for (const k in A.K.SUPPLY) if (A.sour(st, k) || st.sup[k] < A.K.SUPPLY[k].cap * 0.3) A.refill(st, k);
+  }
   else st.slots.forEach((s, i) => { if (s.stock <= 2) A.restock(st, i); });
 }
 
@@ -39,6 +45,7 @@ function play(A, seed, days, operator) {
     check(st.cashbox >= 0 && st.cashbox < K.CASHBOX + K.PRICE_MAX, tag + ': coin box in range');
     check(st.customers.filter(c => c.phase !== 'leave').length <= K.STAGE.QUEUE, tag + ': queue no longer than its spots');
     check(st.log.length <= 40, tag + ': log trimmed');
+    check(!K.SUPPLY || (Object.keys(K.SUPPLY).every(k => Number.isInteger(st.sup[k]) && st.sup[k] >= 0 && st.sup[k] <= K.SUPPLY[k].cap) && st.grounds <= K.GROUNDS), tag + ': supplies and grounds in range');
     check(!K.LOTTERY || (A.total(st) <= K.GLOBE && st.slots.every(s => s.price === st.slots[0].price)), tag + ': globe within capacity, one price');
     // every dollar is accounted for: what you hold now minus what you started
     // with equals the profit booked so far (sales minus item costs, rent,
@@ -60,7 +67,7 @@ function summary(st) {
   };
 }
 
-for (const A of [SODA, SNACK, GUM]) {
+for (const A of [SODA, SNACK, GUM, COFFEE]) {
   const K = A.K;
   // 1. an attentive operator over a month, on several seeds
   for (const seed of [1, 7, 42, 2024]) {
@@ -91,7 +98,7 @@ for (const A of [SODA, SNACK, GUM]) {
   // 4. prices: way too high scares everyone off
   {
     const st = A.create(3);
-    const high = Math.min(4.5, K.PRICE_MAX);
+    const high = K.SUPPLY ? K.PRICE_MAX : Math.min(4.5, K.PRICE_MAX);
     st.slots.forEach((s, i) => A.setPrice(st, i, high + 0.1));
     check(st.slots[0].price === high, `${K.ID}: prices snap to the 25c step`);
     A.step(st, K.DAY * 2);
@@ -99,7 +106,7 @@ for (const A of [SODA, SNACK, GUM]) {
   }
 
   // 5. swapping a product refunds its items at cost
-  if (!K.LOTTERY) {
+  if (!K.LOTTERY && !K.SUPPLY) {
     const st = A.create(4), before = st.wallet, p0 = st.slots[0].p, other = (p0 + 2) % K.PRODUCTS.length;
     A.setProduct(st, 0, other);
     check(Math.abs(st.wallet - before - K.CAP * K.PRODUCTS[p0].cost) < 1e-9 && st.slots[0].stock === 0 && st.slots[0].p === other, `${K.ID}: swap refunds and empties the slot`);
@@ -164,6 +171,64 @@ for (const A of [SODA, SNACK, GUM]) {
   lemon.slots[3].stock = K.GLOBE;
   A.step(lemon, K.DAY * 3);
   check(lemon.history.some(d => d.lostOut > 0), 'kids skip a globe without their colour');
+}
+
+// coffee only: brewing, sour milk, the grounds bin and the cold
+{
+  const A = COFFEE, K = A.K, latte = K.PRODUCTS.findIndex(p => p.id === 'latte');
+  check(K.PRODUCTS[0].cost === 0.26 && K.PRODUCTS[latte].cost === 0.5, 'a drink costs what goes into it');
+
+  const st = A.create(31);
+  for (let i = 0; i < 6; i++) A.setPrice(st, i, K.PRICE_MAX); // nothing sells, so the milk sits there
+  A.step(st, K.SUPPLY.milk.life * K.DAY + 1);
+  check(A.sour(st, 'milk') && !A.sour(st, 'beans'), 'milk goes sour after its life; beans do not');
+  check(st.log.some(e => e.text.includes('MILK HAS GONE SOUR')), 'the machine says when the milk turns');
+  // topping up sour milk pours it away first, and fresh milk gets a new date
+  const waste = st.today.waste, milk = st.sup.milk;
+  st.sup.milk = 30;
+  A.refill(st, 'milk');
+  check(st.sup.milk === K.SUPPLY.milk.cap && !A.sour(st, 'milk') && Math.abs(st.today.waste - waste - 30 * K.SUPPLY.milk.cost) < 1e-9, 'refilling sour milk wastes it and starts fresh');
+  // topping up good milk keeps the oldest date
+  const exp = st.supExp.milk;
+  st.sup.milk = 10; st.wallet = 100;
+  A.step(st, 60); A.refill(st, 'milk');
+  check(st.supExp.milk === exp, 'topping up keeps the old date');
+  check(milk === K.SUPPLY.milk.cap, 'unsold milk stays in the tank');
+
+  // a sour latte is a disgusted customer
+  const sour = A.create(32);
+  sour.supExp.milk = sour.t; // turned just now
+  for (let i = 0; i < 6; i++) A.setPrice(sour, i, i === latte ? 0.5 : K.PRICE_MAX);
+  A.step(sour, K.DAY);
+  check(sour.history[0].stale > 0, 'drinks made with sour milk count as spoiled');
+
+  // brewing takes time, then the customer leaves with the drink
+  const b = A.create(33);
+  let brewing = false, served = false;
+  for (let m = 0; m < 600 && !served; m++) {
+    A.step(b, 1);
+    if (b.customers.some(c => c.brewing)) brewing = true;
+    if (brewing && b.customers.some(c => c.phase === 'leave' && (c.bubble === 'love' || c.bubble === 'ok'))) served = true;
+  }
+  check(brewing && served, 'a drink brews while the customer waits, then they leave happy');
+
+  // a full grounds bin stops the machine until it is emptied
+  const g = A.create(34);
+  g.grounds = K.GROUNDS;
+  A.step(g, K.DAY);
+  check(g.history[0].sold === 0 && g.history[0].lostBroken > 0, 'a full grounds bin stops the machine');
+  A.clean(g);
+  A.step(g, K.DAY);
+  check(g.grounds > 0 && g.history[1].sold > 0, 'emptying the bin gets it brewing again');
+
+  // the cold brings customers
+  const cold = A.create(35), warm = A.create(35);
+  cold.temp = 6; warm.temp = 30;
+  check(A.rate(cold) > A.rate(warm) * 1.5, 'cold days bring more coffee drinkers');
+
+  // neglected: the supplies run out and nothing more can be made
+  const n = play(A, 36, 12, null);
+  check(n.slots.every((s, i) => A.canMake(n, i) === 0) || A.groundsFull(n), 'a neglected coffee machine runs dry or chokes on grounds');
 }
 
 // an old soda save (from before snacks) still loads

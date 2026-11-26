@@ -10,6 +10,7 @@
     soda: ['js/soda/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/soda/main.js'],
     snack: ['js/snack/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/snack/main.js'],
     gumball: ['js/gumball/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/gumball/main.js'],
+  coffee: ['js/coffee/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/coffee/main.js'],
   };
   const files = SHARED.concat(PAGES[document.body.dataset.page] || []);
   (function next(i) {
