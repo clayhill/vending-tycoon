@@ -39,7 +39,7 @@
     START_MIX: [30, 30, 25, 20, 25, 30, 0],
     // a new machine after an explosion: price and minutes to deliver; where
     // the machine stands (x from–to), its colour and where items come out
-    MACHINE: 70, DELIVERY: 90, FOOT: [17, 48], BODY: '#e8204f', HATCH: [32.5, 64.5],
+    MACHINE: 50, DELIVERY: 90, FOOT: [17, 48], BODY: '#e8204f', HATCH: [32.5, 64.5],
     STAGE: { W: 200, H: 104, MX: 70, MY: 4, FRONT: 60, GAP: 15, ENTER: -14, EXIT: 214, QUEUE: 5, WALK: 4, USE: 5 },
   };
 })(typeof window !== 'undefined' ? (window.VT = window.VT || {}) : (globalThis.VT = globalThis.VT || {}));

@@ -35,7 +35,7 @@
     // the stage in art pixels: machine position, the queue's spots, walking speed (px/min)
     // a new machine after an explosion: price and minutes to deliver; where
     // the machine stands (x from–to), its colour and where items come out
-    MACHINE: 140, DELIVERY: 120, FOOT: [9, 55], BODY: '#ff2a6d', HATCH: [25.5, 75],
+    MACHINE: 90, DELIVERY: 120, FOOT: [9, 55], BODY: '#ff2a6d', HATCH: [25.5, 75],
     STAGE: { W: 200, H: 104, MX: 70, MY: 4, FRONT: 58, GAP: 17, ENTER: -14, EXIT: 214, QUEUE: 4, WALK: 4, USE: 6 },
   };
 })(typeof window !== 'undefined' ? (window.VT = window.VT || {}) : (globalThis.VT = globalThis.VT || {}));

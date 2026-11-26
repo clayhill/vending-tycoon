@@ -245,7 +245,14 @@ for (const base of [VT.SODA, VT.SNACK, VT.GUMBALL, VT.COFFEE]) {
 
   // every oddity TNT: the first sale ends in a wreck
   const T = VT.vend(Object.assign({}, base, { WEIRD: 1, TNT: 1 }));
+  // no TNT while the owner could not pay for a new machine
+  const poor = T.create(53);
+  poor.wallet = 0;
+  T.step(poor, K.DAY);
+  check(!poor.wreck && poor.history[0].weird > 0, `${K.ID}: no TNT when a new machine is out of reach`);
+
   const t = T.create(52);
+  t.wallet = 1000;
   const start = t.wallet + t.cashbox + T.stockValue(t);
   let lit = false;
   for (let m = 0; m < 24 * 60 && !t.wreck; m++) { T.step(t, 1); if (t.customers.some(c => c.tnt)) lit = true; }
@@ -260,6 +267,8 @@ for (const base of [VT.SODA, VT.SNACK, VT.GUMBALL, VT.COFFEE]) {
   check(T.orderMachine(t) && !T.orderMachine(t) && Math.abs(wallet - t.wallet - K.MACHINE) < 1e-9, `${K.ID}: ordering a new machine costs ${K.MACHINE}, once`);
   T.step(t, K.DELIVERY + 1);
   check(!t.wreck && !t.order, `${K.ID}: the new machine arrives`);
+  T.step(t, K.DAY);
+  check(!t.wreck && t.booms === 1, `${K.ID}: no second bang right after the first`);
   const booked = t.history.reduce((a, x) => a + x.profit, 0) + T.profit(t.today);
   check(Math.abs(t.wallet + t.cashbox + T.stockValue(t) - start - booked) < 0.05, `${K.ID}: the explosion and new machine are booked`);
   check(T.stockValue(t) > 0, `${K.ID}: the new machine arrives filled`);

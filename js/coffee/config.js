@@ -53,7 +53,7 @@
     ART: { x: 10, y: 24, dx: 14, dy: 9, w: 12, h: 7 },
     // a new machine after an explosion: price and minutes to deliver; where
     // the machine stands (x from–to), its colour and where items come out
-    MACHINE: 180, DELIVERY: 150, FOOT: [8, 56], BODY: '#8a3ab9', HATCH: [29.5, 71],
+    MACHINE: 120, DELIVERY: 150, FOOT: [8, 56], BODY: '#8a3ab9', HATCH: [29.5, 71],
     STAGE: { W: 200, H: 104, MX: 70, MY: 4, FRONT: 60, GAP: 16, ENTER: -14, EXIT: 214, QUEUE: 5, WALK: 4, USE: 2.5 },
   };
 })(typeof window !== 'undefined' ? (window.VT = window.VT || {}) : (globalThis.VT = globalThis.VT || {}));

@@ -69,10 +69,11 @@ commute builds a line.
 
 ## Things that should not come out of a vending machine
 
-Every machine, once in a while, drops something nobody paid for instead of the product: a rubber
-duck, a wet fish, an old boot, a mixtape, a tiny cactus, a garden gnome. The customer is puzzled
-but it was paid for. Very rarely it is a bundle of TNT with wires and a lit fuse. The game drops to
-normal speed so you see it coming. The customer picks it up, the fuse burns down, and the machine
+About one sale in forty, a machine drops something else instead of the product: a rubber duck, a
+wet fish, an old boot, a mixtape, a tiny cactus, a garden gnome. The customer is puzzled, but it was
+paid for. About one of those in eight is a bundle of TNT with wires and a lit fuse, which works out
+at roughly one explosion every two game weeks. TNT only comes out when you could pay for a new
+machine, and never twice within three days. The game drops to normal speed so you see it coming. The customer picks it up, the fuse burns down, and the machine
 explodes, taking its stock and the coin box with it. The smoking wreck sells nothing: order a new
 machine (`O`). It arrives filled, a couple of game hours later.
 

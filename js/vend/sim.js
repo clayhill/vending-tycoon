@@ -61,7 +61,7 @@
   // the oddities, and what the log calls them
   VT.ODDITIES = { duck: 'A RUBBER DUCK', fish: 'A WET FISH', boot: 'AN OLD BOOT', tape: 'A MIXTAPE', cactus: 'A TINY CACTUS', gnome: 'A GARDEN GNOME', tnt: 'A BUNDLE OF TNT' };
   const ODD = Object.keys(VT.ODDITIES).filter(k => k !== 'tnt');
-  const TNT_SHARE = 0.05; // of the oddities, how many are TNT
+  const TNT_SHARE = 0.12; // of the oddities, how many are TNT
   const FUSE = 14;        // game minutes from picking up the TNT to the bang
 
   VT.vend = function (K) {
@@ -71,7 +71,7 @@
     const PERISH = P.some(p => p.life), LOTTO = !!K.LOTTERY, BREW = !!K.SUPPLY;
     const SUP = BREW ? Object.keys(K.SUPPLY) : [];
     const A = { K };
-    const WEIRD = K.WEIRD === undefined ? 0.006 : K.WEIRD, TNT = K.TNT === undefined ? TNT_SHARE : K.TNT;
+    const WEIRD = K.WEIRD === undefined ? 0.025 : K.WEIRD, TNT = K.TNT === undefined ? TNT_SHARE : K.TNT;
     A.total = st => st.slots.reduce((a, s) => a + s.stock, 0);
     const space = st => (LOTTO ? K.GLOBE - A.total(st) : Infinity);
 
@@ -332,7 +332,14 @@
     }
 
     // ---- oddities and TNT ----
-    const roll = st => (rand(st) < WEIRD ? (rand(st) < TNT ? 'tnt' : ODD[Math.floor(rand(st) * ODD.length)]) : null);
+    // TNT only when the owner could pay for a new machine, and not again
+    // within a few days of the last bang: bad luck should not end the game
+    const tntOk = st => st.wallet >= K.MACHINE && (!st.lastBoom || st.t - st.lastBoom > 3 * K.DAY);
+    const roll = st => {
+      if (rand(st) >= WEIRD) return null;
+      const tnt = rand(st) < TNT, odd = ODD[Math.floor(rand(st) * ODD.length)];
+      return tnt && tntOk(st) ? 'tnt' : odd;
+    };
     // what the customer does with it: puzzled, or holding a lit fuse
     function oddity(st, c, w, wanted) {
       const what = wanted || P[c.cup] && P[c.cup].name || K.ITEMS;
@@ -353,7 +360,7 @@
       for (const s of st.slots) { s.stock = 0; s.hang = false; if (s.exp) s.exp = []; }
       if (BREW) { for (const k of SUP) st.sup[k] = 0; st.grounds = 0; }
       st.cashbox = 0; st.jam = false; st.wear = 0; st.hype = 0;
-      st.wreck = { n: ++st.booms, t: st.t }; st.order = null;
+      st.wreck = { n: ++st.booms, t: st.t }; st.order = null; st.lastBoom = st.t;
       rate(st, -0.4);
       c.tnt = false; c.held = null; c.charred = true;
       for (const o of st.customers) {
