@@ -2,6 +2,8 @@
 
 **Try it live: [clayhill.github.io/vending-tycoon](https://clayhill.github.io/vending-tycoon/)**
 
+![Launch page: pick a vending machine; the soda machine is open, three more are still locked](docs/screenshots/landing.png)
+
 A vending machine simulator that runs in your browser, styled as a vaporwave arcade game:
 neon grids, sunsets and crisp, high-resolution pixel art. Pick a machine on the launch page and
 step up to it.
@@ -9,6 +11,8 @@ step up to it.
 ## Soda Cans
 
 The first machine. You run a soda can vending machine on a neon street:
+
+![The soda machine on day 5: customers queue, one walks off happy, the panels show cash, today's sales and the selected slot](docs/screenshots/soda.png)
 
 - **Customers** come by more at lunch and in the evening, on hot days and when your star rating is high.
   Each wants a favourite drink and will pay up to a price of their own; they queue, buy it, settle for
