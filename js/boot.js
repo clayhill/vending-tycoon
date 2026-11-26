@@ -4,13 +4,13 @@
 (function () {
   'use strict';
   const T = new URLSearchParams(document.currentScript.src.split('?')[1] || '').get('t') || Date.now();
-  const SHARED = ['js/pixel.js', 'js/font.js', 'js/scene.js', 'js/machines.js', 'js/icons.js'];
+  const SHARED = ['js/pixel.js', 'js/font.js', 'js/scene.js', 'js/machines.js', 'js/icons.js', 'js/hd.js', 'js/machines-hd.js'];
   const PAGES = {
     landing: ['js/landing.js'],
     soda: ['js/soda/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/soda/main.js'],
     snack: ['js/snack/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/snack/main.js'],
     gumball: ['js/gumball/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/gumball/main.js'],
-  coffee: ['js/coffee/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/coffee/main.js'],
+    coffee: ['js/coffee/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/coffee/main.js'],
   };
   const files = SHARED.concat(PAGES[document.body.dataset.page] || []);
   (function next(i) {

@@ -3,4 +3,6 @@ VT.vendGame({
   K: VT.SODA,
   draw: VT.drawSoda,
   icon: (fb, p) => VT.drawCan(fb, 1, 1, VT.rgb(VT.SODA.PRODUCTS[p].color)),
+  drawHD: VT.drawSodaHD,
+  iconHD: (c, p) => VT.HD.items.can(c, 1, 1, VT.SODA.PRODUCTS[p].color),
 });

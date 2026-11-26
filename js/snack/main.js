@@ -3,4 +3,6 @@ VT.vendGame({
   K: VT.SNACK,
   draw: VT.drawSnack,
   icon: (fb, p) => VT.drawSnackItem(fb, 1, 2, VT.SNACK.PRODUCTS[p].shape, VT.rgb(VT.SNACK.PRODUCTS[p].color)),
+  drawHD: VT.drawSnackHD,
+  iconHD: (c, p) => VT.HD.items.snack(c, 1, 2, VT.SNACK.PRODUCTS[p].shape, VT.SNACK.PRODUCTS[p].color),
 });

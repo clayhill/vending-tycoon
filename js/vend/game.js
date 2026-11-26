@@ -11,10 +11,13 @@
 (function (VT) {
   'use strict';
 
-  VT.vendGame = function ({ K, draw, icon }) {
+  VT.vendGame = function ({ K, draw, icon, drawHD, iconHD }) {
     const A = VT.vend(K), S = K.STAGE, PR = K.PRODUCTS, ART = K.ART;
     const $ = id => document.getElementById(id);
-    const PC = PR.map(p => VT.rgb(p.color)), LIQ = PR.map(p => p.liquid && VT.rgb(p.liquid));
+    // HD: smooth vector drawing at full resolution (js/hd.js); colours as hex
+    const HD = !!(VT.hd && drawHD);
+    const col = h => (HD ? h : VT.rgb(h));
+    const PC = PR.map(p => col(p.color)), LIQ = PR.map(p => p.liquid && col(p.liquid));
     const SUP = K.SUPPLY ? Object.keys(K.SUPPLY) : [];
     // on a gumball or coffee machine the arrows step through the slots
     const PICK = !!(K.LOTTERY || K.SUPPLY);
@@ -39,17 +42,19 @@
 
     // ---- the street: backdrop, machine and customers ----
     const bg = $('bg');
-    const scene = VT.scene(bg, { horizon: 0.72 });
-    const stage = $('stage'), fb = new VT.FB(stage);
-    fb.resize(S.W, S.H);
+    const scene = (HD ? VT.sceneHD : VT.scene)(bg, { horizon: 0.72 });
+    const stage = $('stage'), fb = HD ? null : new VT.FB(stage), so = HD ? VT.hdCanvas(stage, S.W, S.H) : null;
+    if (fb) fb.resize(S.W, S.H);
     const mfb = new VT.FB(document.createElement('canvas'));
     mfb.resize(64, 88);
     function fitStage() {
-      const wrap = stage.parentElement;
-      const k = Math.max(2, Math.min(6, Math.floor(wrap.clientWidth / S.W), Math.floor((innerHeight * 0.62) / S.H)));
+      const wrap = stage.parentElement, fit = Math.min(wrap.clientWidth / S.W, (innerHeight * 0.62) / S.H);
+      if (HD) { so.fit(Math.max(1.5, Math.min(6, fit))); return; }
+      const k = Math.max(2, Math.min(6, Math.floor(fit)));
       stage.style.width = S.W * k + 'px'; stage.style.height = S.H * k + 'px';
     }
     fitStage(); addEventListener('resize', fitStage);
+    if (HD) addEventListener('resize', () => requestAnimationFrame(() => refresh(true)));
 
     const PAVE = VT.rgb('#1c0838'), PAVE_LO = VT.rgb('#12042a'), PAVE_EDGE = VT.rgb('#ff71ce'), JOINT = VT.rgb('#0d0221');
     function pavement() {
@@ -85,7 +90,31 @@
       };
     }
 
+    function pavementHD(c) {
+      const top = S.H - 16, H = VT.HD;
+      c.fillStyle = H.lin(c, 0, top, 0, S.H, [[0, '#24104a'], [0.5, '#1c0838'], [1, '#0e0322']]); c.fillRect(0, top, S.W, 16);
+      c.strokeStyle = 'rgba(13,2,33,.8)'; c.lineWidth = 0.35;
+      for (let x = -16; x < S.W; x += 8) { c.beginPath(); c.moveTo(x, top); c.lineTo(x + 5.3, S.H); c.stroke(); }
+      c.save(); H.glow(c, '#ff71ce', 3); c.fillStyle = '#ff71ce'; c.fillRect(0, top - 0.3, S.W, 0.7); c.restore();
+      c.fillStyle = 'rgba(255,113,206,.08)'; c.fillRect(0, top, S.W, 3);
+    }
+    function drawStageHD(t) {
+      const c = so.begin(), H = VT.HD;
+      pavementHD(c);
+      c.save(); c.translate(S.MX, S.MY); drawHD(c, t, view(t)); c.restore();
+      const order = st.customers.slice().sort((a, b) => (a.phase === 'leave') - (b.phase === 'leave'));
+      for (const p of order) {
+        const foot = p.phase === 'leave' ? S.H - 3 : S.H - 9, moving = p.phase === 'walk' || p.phase === 'leave';
+        c.save(); c.globalAlpha = 0.5; c.fillStyle = '#05000d'; c.beginPath(); c.ellipse(p.x + 0.5, foot + 0.3, 5, 1.1, 0, 0, 7); c.fill(); c.restore();
+        H.person(c, p.x, foot, p.look, moving ? p.x / 3 : null, p.phase === 'use', p.kid);
+        const by = foot - VT.bubbleHeight(p.kid);
+        if (p.bubble) H.bubble(c, p.x + 1, by, p.bubble, t);
+        else if (p.phase === 'use') H.bubble(c, p.x + 1, by, 'think', t);
+      }
+    }
+
     function drawStage(t) {
+      if (HD) return drawStageHD(t);
       fb.clear();
       pavement();
       draw(mfb, t, view(t));
@@ -116,12 +145,39 @@
     stage.addEventListener('mousemove', e => { stage.style.cursor = slotAt(e) >= 0 ? 'pointer' : ''; });
 
     // ---- small pixel widgets ----
-    const wx = VT.pixelCanvas($('wx'), 9, 9, 3);
-    const stars = VT.pixelCanvas($('stars'), 39, 7, 3);
-    const slotIcon = VT.pixelCanvas($('slotIcon'), 9, 10, 3);
-    const chart = VT.pixelCanvas($('chart'), 74, 44, () => Math.max(3, VT.scale()));
+    const widget = (id, w, h, k) => (HD ? VT.hdCanvas($(id), w, h, k) : VT.pixelCanvas($(id), w, h, k));
+    const wx = widget('wx', 9, 9, 3);
+    const stars = widget('stars', 39, 7, 3);
+    const slotIcon = widget('slotIcon', 9, 10, 3);
+    const chart = widget('chart', 74, 44, () => Math.max(3, VT.scale()));
     const DIM_STAR = { y: VT.PAL.d };
+    function drawStarsHD(r) {
+      const c = stars.begin();
+      for (let i = 0; i < 5; i++) {
+        c.save(); c.globalAlpha = 0.35; VT.HD.icon(c, 'star', i * 8, 0, 7); c.restore();
+        const fill = Math.max(0, Math.min(1, r - i));
+        if (fill > 0) { c.save(); c.beginPath(); c.rect(i * 8, 0, fill * 7, 7); c.clip(); VT.HD.icon(c, 'prize', i * 8, 0, 7); c.restore(); }
+      }
+    }
+    function drawChartHD() {
+      const days = st.history.slice(-7), c = chart.begin(), base = 34, top = 3, H = VT.HD;
+      const max = Math.max(5, ...days.map(d => Math.max(d.revenue, Math.abs(d.profit))));
+      const zero = days.some(d => d.profit < 0) ? Math.round(base - (base - top) * 0.75) : base;
+      const sc = (zero - top) / max;
+      c.strokeStyle = 'rgba(180,154,214,.18)'; c.lineWidth = 0.25;
+      for (let k = 1; k <= 3; k++) { const y = zero - (zero - top) * k / 3; c.beginPath(); c.moveTo(0, y); c.lineTo(74, y); c.stroke(); }
+      c.fillStyle = '#3b1a63'; c.fillRect(0, zero - 0.2, 74, 0.5);
+      days.forEach((d, i) => {
+        const x = 2 + i * 10, hr = Math.max(0.6, d.revenue * sc), hp = Math.abs(d.profit) * sc;
+        c.fillStyle = H.lin(c, 0, zero - hr, 0, zero, [[0, '#7ae6ff'], [1, '#01a0d0']]); H.rr(c, x, zero - hr, 3.6, hr, 0.8); c.fill();
+        if (d.profit >= 0) { c.fillStyle = H.lin(c, 0, zero - hp, 0, zero, [[0, '#8affcf'], [1, '#05c080']]); H.rr(c, x + 4, zero - hp, 3.6, hp, 0.8); c.fill(); }
+        else { c.fillStyle = '#ff2a6d'; H.rr(c, x + 4, zero + 0.3, 3.6, Math.min(hp, base - zero), 0.8); c.fill(); }
+        c.fillStyle = '#9a95c8'; c.font = H.font(3.6, 600, 'Rajdhani'); c.textAlign = 'center'; c.fillText(String(d.day % 100), x + 3.8, 41.5);
+      });
+      if (!days.length) { c.fillStyle = '#3b1a63'; c.font = H.font(4, 600, 'Rajdhani'); c.textAlign = 'center'; c.fillText('NO DAYS YET', 37, 22); }
+    }
     function drawStars(r) {
+      if (HD) return drawStarsHD(r);
       stars.clear();
       for (let i = 0; i < 5; i++) {
         VT.icon(stars, 'star', i * 8, 0, DIM_STAR);
@@ -135,6 +191,7 @@
       stars.flush();
     }
     function drawChart() {
+      if (HD) return drawChartHD();
       const days = st.history.slice(-7), C = chart, base = 34, top = 3;
       C.clear();
       const max = Math.max(5, ...days.map(d => Math.max(d.revenue, Math.abs(d.profit))));
@@ -161,7 +218,8 @@
       if (force) shown = {};
       set('day', 'DAY ' + A.day(st)); set('time', A.clock(st));
       set('temp', st.temp + '°C');
-      if (shown.sky !== st.sky) { shown.sky = st.sky; wx.clear(); VT.icon(wx, st.sky, 0, 0); wx.flush(); $('wx').parentElement.title = st.sky === 'sun' ? 'Sunny' : st.sky === 'cloud' ? 'Cloudy' : 'Rain'; }
+      if (HD) { const c = wx.begin(); VT.HD.icon(c, st.sky, 0, 0, 9, performance.now() / 1000); }
+      if (shown.sky !== st.sky) { shown.sky = st.sky; if (!HD) { wx.clear(); VT.icon(wx, st.sky, 0, 0); wx.flush(); } $('wx').parentElement.title = st.sky === 'sun' ? 'Sunny' : st.sky === 'cloud' ? 'Cloudy' : 'Rain'; }
       const r = Math.round(st.rating * 4) / 4;
       if (shown.rating !== r) { shown.rating = r; drawStars(r); $('rating').setAttribute('aria-label', `Rating ${r.toFixed(1)} of 5`); }
 
@@ -233,7 +291,10 @@
 
       const s = st.slots[sel], p = PR[s.p];
       set('slotName', A.slotName(sel)); set('productName', p.name);
-      if (shown.icon !== s.p) { shown.icon = s.p; slotIcon.clear(); icon(slotIcon, s.p); slotIcon.flush(); }
+      if (shown.icon !== s.p) {
+        shown.icon = s.p;
+        if (HD) { const c = slotIcon.begin(); iconHD(c, s.p); } else { slotIcon.clear(); icon(slotIcon, s.p); slotIcon.flush(); }
+      }
       if (K.LOTTERY) {
         // a flavour's share of the globe, which is its chance on each turn
         const total = A.total(st), share = total ? s.stock / total : 0;

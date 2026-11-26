@@ -229,3 +229,68 @@ body.warp .screen { animation: warp .45s steps(6) forwards; }
 /* coffee supplies: name, amount and a refill button on one row */
 .row.supply > span { flex: 1; }
 .row.supply .btn { min-width: 76px; }
+
+/* ---- the PIXEL / HD switch ---- */
+.render { display: flex; gap: 8px; }
+.hud { align-items: center; }
+.hud .render { gap: 6px; }
+.hud .render .btn { font-size: 8px; }
+
+/* ---- HD: smooth type, soft glass panels and glows instead of hard pixels ---- */
+html.hd body { font-family: 'Rajdhani', system-ui, sans-serif; font-weight: 600; font-size: 19px; -webkit-font-smoothing: antialiased; }
+html.hd canvas { image-rendering: auto; }
+html.hd kbd, html.hd .label, html.hd .hud, html.hd .tag, html.hd .status, html.hd .keys, html.hd .back, html.hd .bar,
+html.hd .btn, html.hd .panel h2, html.hd .picker b, html.hd .hint, html.hd .toast, html.hd .row b.small, html.hd .pill {
+  font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; letter-spacing: .04em;
+}
+html.hd .crt { background: radial-gradient(ellipse at center, transparent 60%, rgba(5, 0, 15, .55) 100%); }
+html.hd .row b { font-weight: 700; font-size: 21px; }
+html.hd .row.big b { font-size: 28px; text-shadow: 0 0 12px rgba(5, 255, 161, .45); }
+html.hd .row.price b { font-size: 27px; text-shadow: 0 0 12px rgba(255, 251, 150, .4); }
+html.hd .stats { font-size: 18px; }
+html.hd .log { font-size: 17px; }
+html.hd .panel, html.hd .log, html.hd .toast {
+  border-radius: 14px; border: 1px solid rgba(185, 103, 255, .45);
+  background: linear-gradient(160deg, rgba(43, 10, 79, .78), rgba(13, 2, 33, .86));
+  box-shadow: 0 0 24px rgba(255, 42, 109, .12), inset 0 1px 0 rgba(255, 255, 255, .08), 0 12px 30px rgba(5, 0, 15, .5);
+  backdrop-filter: blur(6px);
+}
+html.hd .toast { border-color: var(--cyan); box-shadow: 0 0 32px rgba(1, 205, 254, .35), 0 14px 40px rgba(5, 0, 15, .6); }
+html.hd .toast b { text-shadow: 0 0 14px rgba(255, 42, 109, .8); }
+html.hd .panel h2 { font-size: 12px; text-shadow: 0 0 10px rgba(1, 205, 254, .5); }
+html.hd .btn {
+  border-radius: 9px; border: 1px solid var(--edge); padding: 9px 12px; font-size: 10px;
+  background: linear-gradient(180deg, #3d1470, #250848);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 3px 10px rgba(5, 0, 15, .4);
+  transition: border-color .12s, box-shadow .12s, color .12s;
+}
+html.hd .btn:hover, html.hd .btn:focus-visible { box-shadow: 0 0 14px rgba(1, 205, 254, .45), inset 0 1px 0 rgba(255, 255, 255, .14); }
+html.hd .btn[aria-pressed="true"] { background: linear-gradient(180deg, #ff5a8f, #e01e5e); box-shadow: 0 0 16px rgba(255, 42, 109, .55); }
+html.hd .btn.warn { background: linear-gradient(180deg, #7a1238, #4a0820); box-shadow: 0 0 14px rgba(255, 42, 109, .45); }
+html.hd .btn.ghost { background: transparent; }
+html.hd .btn.small { padding: 7px 9px; font-size: 9px; }
+html.hd .btn[disabled] { box-shadow: none; }
+html.hd .btn kbd { border-radius: 4px; }
+html.hd kbd { border-radius: 5px; box-shadow: inset 0 -2px 0 var(--dim), 0 0 0 1px var(--ink); padding: 3px 6px; }
+html.hd .pill { border-radius: 99px; padding: 4px 9px; font-size: 8px; }
+html.hd .meter { height: 8px; border-radius: 99px; box-shadow: inset 0 0 0 1px rgba(185, 103, 255, .5); margin: 2px 0 6px; overflow: hidden; }
+html.hd .meter i { border-radius: 99px; background: linear-gradient(90deg, #05c080, #05ffa1); box-shadow: 0 0 10px rgba(5, 255, 161, .6); transition: width .3s; }
+html.hd .meter i.hot { background: linear-gradient(90deg, #c0144a, #ff2a6d); box-shadow: 0 0 10px rgba(255, 42, 109, .6); }
+html.hd .legend i { border-radius: 3px; }
+html.hd .bar .clock b { text-shadow: 0 0 12px rgba(255, 42, 109, .8); font-size: 15px; }
+html.hd .back, html.hd .hud { text-shadow: 0 0 10px rgba(255, 113, 206, .5); }
+html.hd .slot {
+  border-radius: 16px; border: 1px solid var(--edge);
+  background: linear-gradient(170deg, rgba(43, 10, 79, .8), rgba(13, 2, 33, .9));
+  box-shadow: 0 12px 30px rgba(5, 0, 15, .55), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+html.hd .slot.on { box-shadow: 0 0 30px rgba(1, 205, 254, .35), 0 12px 30px rgba(5, 0, 15, .55); }
+html.hd .slot .label { font-size: 13px; text-shadow: none; }
+html.hd .slot .meta { font-size: 16px; }
+html.hd .tag { font-size: 13px; }
+html.hd .status { font-size: 13px; text-shadow: 0 0 12px rgba(255, 42, 109, .8); }
+html.hd .logo { filter: none; }
+html.hd #stage { filter: drop-shadow(0 0 24px rgba(255, 42, 109, .22)); }
+html.hd .row b.small { font-size: 10px; }
+html.hd .row span { white-space: nowrap; }
+html.hd .tag { text-shadow: 0 0 12px rgba(1, 205, 254, .7); }

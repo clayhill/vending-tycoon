@@ -19,6 +19,17 @@
     return (n ^ (n >>> 16)) >>> 0;
   }
 
+  // a customer's look from their seed: the same in pixel art and in HD
+  const HEX = { skin: ['#f3cfb3', '#e0ac7e', '#c68c5e', '#8d5a36', '#5a3a22'], hair: ['#1c140f', '#4a2a1a', '#a0522d', '#e8c26a', '#ff71ce', '#01cdfe', '#b967ff', '#f1e6ff'],
+    shirt: ['#ff2a6d', '#01cdfe', '#05ffa1', '#fffb96', '#b967ff', '#ff9e3d', '#f1e6ff', '#ff71ce'], pants: ['#2b0a4f', '#1a2a6a', '#3a3a52', '#5a2d8a', '#0d4b5a', '#6a1a3a'] };
+  VT.lookOf = function (look, kid) {
+    const h = hash(look);
+    return {
+      skin: HEX.skin[h % 5], hair: HEX.hair[(h >>> 4) % 8], shirt: HEX.shirt[(h >>> 8) % 8], pants: HEX.pants[(h >>> 12) % 6], capC: HEX.shirt[(h >>> 20) % 8],
+      long: (h >>> 16) & 1, cap: ((h >>> 17) & 3) === 0, shades: !kid && ((h >>> 24) & 7) === 0,
+    };
+  };
+
   const cache = new Map();
   function sprite(look, step, reach, kid) {
     const key = look + ':' + step + ':' + reach + ':' + kid;

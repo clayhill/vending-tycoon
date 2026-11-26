@@ -67,11 +67,20 @@ commute builds a line.
   until you empty it (`G`).
 - Cold and rainy days bring more customers, who pay more; the kiosk's rent is the highest of all.
 
+## Pixel or HD
+
+The switch at the top of every page picks how it is drawn: **PIXEL**, the low-resolution pixel art
+scaled up crisp, or **HD**, the same street, machines and customers redrawn as smooth vector art at
+your screen's full resolution, with glass panels and clean type. Your choice is remembered in this
+browser.
+
+![The gumball machine in HD at the after-school rush](docs/screenshots/hd.png)
+
 ## How it's built
 
 Every machine runs on one engine, `js/vend/`: the simulation, the customers and the game screen. A
 machine adds its config (`js/soda/config.js`, `js/snack/config.js`, `js/gumball/config.js`, `js/coffee/config.js`) and its pixel art
-(`js/machines.js`). The simulation runs without the page, so `npm test` plays a month of each machine
+(`js/machines.js`, and `js/machines-hd.js` for HD; the HD backdrop, customers and icons are in `js/hd.js`). The simulation runs without the page, so `npm test` plays a month of each machine
 in Node and checks that the money adds up. Games save themselves in your browser.
 
 ## Running it

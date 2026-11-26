@@ -7,12 +7,22 @@
   const setPx = () => root.style.setProperty('--px', VT.scale() + 'px');
   setPx(); addEventListener('resize', setPx);
 
-  const items = [VT.scene(document.getElementById('bg')), VT.logo(document.getElementById('logo'), 'VENDING', 'TYCOON')];
-  for (const c of document.querySelectorAll('canvas[data-art]')) items.push(VT.art(c, c.dataset.art));
+  const HD = VT.hd;
+  const items = [(HD ? VT.sceneHD : VT.scene)(document.getElementById('bg')), (HD ? VT.logoHD : VT.logo)(document.getElementById('logo'), 'VENDING', 'TYCOON')];
+  for (const c of document.querySelectorAll('canvas[data-art]')) items.push((HD ? VT.artHD : VT.art)(c, c.dataset.art));
 
   // the bouncing pointer above the selected machine: a down arrow sprite
   const ARROW = ['1111111', '0111110', '0011100', '0001000'];
   for (const el of document.querySelectorAll('.cursor')) {
+    if (HD) {
+      const c = document.createElement('canvas'), o = VT.hdCanvas(c, 9, 6, () => VT.scale() + 1), x = o.begin(), H = VT.HD;
+      x.beginPath(); x.moveTo(1, 1); x.lineTo(8, 1); x.lineTo(4.5, 5.2); x.closePath();
+      x.fillStyle = H.lin(x, 0, 1, 0, 5, [[0, '#fffb96'], [1, '#ff2a6d']]); x.fill();
+      x.strokeStyle = H.INK; x.lineWidth = 0.5; x.lineJoin = 'round'; x.stroke();
+      addEventListener('resize', () => { const y = o.begin(); y.beginPath(); y.moveTo(1, 1); y.lineTo(8, 1); y.lineTo(4.5, 5.2); y.closePath(); y.fillStyle = H.lin(y, 0, 1, 0, 5, [[0, '#fffb96'], [1, '#ff2a6d']]); y.fill(); });
+      el.appendChild(c);
+      continue;
+    }
     const c = document.createElement('canvas'), fb = new VT.FB(c);
     fb.resize(9, 6);
     const ink = VT.rgb('#0d0221'), sun = VT.rgb('#fffb96'), hot = VT.rgb('#ff2a6d');
