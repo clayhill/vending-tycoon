@@ -319,6 +319,110 @@
   }
   VT.drawSnack = snack;
 
+  // ---- the gumball machine ----
+  const GB = {};
+  for (const [k, v] of Object.entries({
+    red: '#e8204f', redHi: '#ff6f8f', redLo: '#9a0f35', redDk: '#5e0820', gold: '#ffd34a', goldHi: '#fff6b0',
+  })) GB[k] = VT.rgb(v);
+  const SHOW_MIX = ['#ff2a6d', '#01cdfe', '#05ffa1', '#fffb96', '#b967ff', '#ff9ee0'].map(VT.rgb);
+  // where balls sit in the globe, packed from the bottom up
+  const GCX = 32, GCY = 27, GR = 19, SPOTS = [];
+  for (let row = 0; ; row++) {
+    const y = GCY + GR - 4 - row * 3;
+    if (y < GCY - GR + 1) break;
+    for (let x = GCX - GR + (row % 2 ? 2 : 1); x <= GCX + GR - 3; x += 3) {
+      if (Math.hypot(x + 1 - GCX, y + 1 - GCY) <= GR - 2.2) SPOTS.push([x, y]);
+    }
+  }
+  const spotHash = i => ((Math.imul(i + 1, 2654435761) >>> 0) % 10007) / 10007;
+
+  // a 3×3 gumball with a highlight
+  function ball(fb, x, y, c) {
+    const lo = VT.mix(c, P.ink, 0.4);
+    fb.rect(x, y, 3, 3, c);
+    fb.px(x + 2, y + 2, lo); fb.px(x, y + 2, lo); fb.px(x + 2, y, lo);
+    fb.px(x, y, VT.mix(c, P.white, 0.6));
+  }
+  VT.drawGumball = function (fb, x, y, c) { ball(fb, x, y, c); };
+
+  // view (optional): { slots: [{ color, stock, prize }], total, cap, price,
+  // sign, drop: { at, color }, busy: someone is turning the crank }
+  function gumball(fb, t, view) {
+    fb.clear();
+    shadow(fb, 14, 50);
+    // the glass globe and the balls inside, filled to the globe's level
+    for (let y = GCY - GR - 1; y <= GCY + GR + 1; y++) for (let x = GCX - GR - 1; x <= GCX + GR + 1; x++) {
+      const d = Math.hypot(x + 0.5 - GCX, y + 0.5 - GCY);
+      if (d <= GR - 0.5) fb.px(x, y, P.glass);
+      else if (d <= GR + 0.6) fb.px(x, y, P.metalLo);
+      else if (d <= GR + 1.5) fb.px(x, y, P.ink);
+    }
+    const total = view ? view.total : 1, cap = view ? view.cap : 1;
+    const n = Math.round(SPOTS.length * Math.min(1, total / cap));
+    // each spot's colour comes from the globe's mix, the same spot staying the same colour
+    const cum = [];
+    if (view) { let a = 0; for (const s of view.slots) { a += s.stock / Math.max(1, total); cum.push(a); } }
+    for (let i = 0; i < n; i++) {
+      const [x, y] = SPOTS[i], u = spotHash(i);
+      let c;
+      if (!view) c = SHOW_MIX[Math.floor(u * SHOW_MIX.length)];
+      else { let k = 0; while (k < cum.length - 1 && u >= cum[k]) k++; c = view.slots[k].color; if (view.slots[k].prize) c = Math.floor(t * 3 + i) % 4 ? GB.gold : GB.goldHi; }
+      ball(fb, x, y, c);
+    }
+    // the glass shine
+    for (let k = 0; k < 9; k++) {
+      const a = -2.3 + k * 0.12;
+      fb.blend(Math.round(GCX + Math.cos(a) * (GR - 4)), Math.round(GCY + Math.sin(a) * (GR - 4)), P.white, 0.7);
+      fb.blend(Math.round(GCX + Math.cos(a) * (GR - 5)), Math.round(GCY + Math.sin(a) * (GR - 5)), P.white, 0.3);
+    }
+    // the lid and its knob
+    fb.rect(25, 5, 15, 4, P.ink); fb.rect(26, 6, 13, 3, GB.red); fb.rect(26, 6, 13, 1, GB.redHi);
+    fb.rect(30, 2, 5, 4, P.ink); fb.rect(31, 3, 3, 3, GB.red); fb.px(31, 3, GB.redHi);
+    // the collar under the globe
+    fb.rect(17, 45, 31, 4, P.ink); fb.rect(18, 46, 29, 2, P.metal); fb.rect(18, 47, 29, 1, P.metalLo);
+
+    // the body: a cast red head with the coin mechanism and the crank
+    fb.rect(17, 49, 31, 20, P.ink);
+    fb.rect(18, 49, 29, 19, GB.red);
+    fb.rect(18, 49, 2, 19, GB.redHi); fb.rect(44, 49, 3, 19, GB.redLo);
+    fb.rect(24, 51, 17, 13, P.ink); fb.rect(25, 52, 15, 11, P.metal);
+    fb.rect(25, 62, 15, 1, P.metalLo); fb.rect(25, 52, 15, 1, P.white);
+    // price plate, or an alarm
+    // the price plate: cents ("50"), dollars and dimes ("1.2"), or a flashing "!"
+    const alarm = view && view.sign, flash = Math.floor(t * 2.5) % 2 === 0;
+    fb.rect(26, 53, 7, 5, alarm && flash ? P.alarm : P.ink);
+    if (alarm) { if (flash) { fb.rect(29, 54, 1, 2, P.white); fb.px(29, 57, P.white); } }
+    else {
+      const cents = view ? Math.round(view.price * 100) : 25;
+      if (cents < 100) VT.tiny(fb, String(cents).padStart(2, '0'), 26, 53, P.lcdOn);
+      else {
+        VT.tiny(fb, String(Math.floor(cents / 100) % 10), 26, 53, P.lcdOn);
+        fb.px(29, 57, P.lcdOn);
+        VT.tiny(fb, String(Math.floor((cents % 100) / 10)), 30, 53, P.lcdOn);
+      }
+    }
+    fb.rect(28, 59, 3, 1, P.slot); // coin slot
+    // the crank: a knob with a handle that turns while someone is buying
+    const turning = view ? view.busy : Math.floor(t * 0.5) % 3 === 0;
+    const ang = turning ? t * 5 : 0.9;
+    fb.rect(34, 54, 5, 5, P.ink); fb.rect(35, 55, 3, 3, P.metalLo); fb.px(36, 56, P.white);
+    for (let k = 1; k <= 3; k++) fb.px(Math.round(36 + Math.cos(ang) * k), Math.round(56 + Math.sin(ang) * k), P.ink);
+    fb.rect(Math.round(36 + Math.cos(ang) * 4) - 1, Math.round(56 + Math.sin(ang) * 4) - 1, 2, 2, GB.redHi);
+    // the chute, where the ball rolls out
+    fb.rect(28, 64, 9, 4, P.ink); fb.rect(29, 65, 7, 2, P.slot); fb.rect(29, 64, 7, 1, P.metalLo);
+    const age = view ? (view.drop ? t - view.drop.at : 99) : ((t % 3.6) / 3.6 - 0.25) * 3.6;
+    if (age >= 0 && age < 2.4) {
+      const roll = Math.min(3, Math.floor(age * 8));
+      const c = view ? view.drop.color : SHOW_MIX[Math.floor(t / 3.6) % 6];
+      ball(fb, 29 + roll, 64, c);
+    }
+    // stand and base
+    fb.rect(29, 68, 7, 14, P.ink); fb.rect(30, 68, 5, 14, GB.redLo); fb.rect(30, 68, 1, 14, GB.red);
+    for (let k = 0; k < 3; k++) fb.rect(30, 71 + k * 4, 5, 1, GB.redDk);
+    fb.rect(17, 80, 31, 5, P.ink); fb.rect(18, 81, 29, 3, GB.red); fb.rect(18, 81, 29, 1, GB.redHi); fb.rect(18, 83, 29, 1, GB.redLo);
+  }
+  VT.drawGumballMachine = gumball;
+
   // Bind a canvas to a machine's art. size: art pixels per CSS-pixel step.
   VT.art = function (canvas, kind, size) {
     const fb = new VT.FB(canvas);
@@ -332,6 +436,7 @@
       draw(t) {
         if (kind === 'soda') soda(fb, t);
         else if (kind === 'snacks') snack(fb, t);
+        else if (kind === 'gumballs') gumball(fb, t);
         else locked(fb, t, kind);
         fb.flush();
       },

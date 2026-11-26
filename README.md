@@ -37,10 +37,23 @@ don't have:
   more often until you pay for a service (`S`).
 - Customers buy snacks most in the afternoon and late at night, a little more on cold days.
 
+## Gumballs
+
+One glass globe of 200 gumballs, one price per turn, and a crowd of kids after school. Nobody picks a
+flavour: a turn of the crank hands out a random ball, so the mix in the globe is the whole game.
+
+![The gumball machine on day 4 at the after-school rush, with a queue of kids and the prize buzz pulling in a crowd](docs/screenshots/gumball.png)
+
+- **The mix.** Each flavour's share of the globe is its chance of coming out. A kid whose favourite
+  colour is missing may not bother, and one who gets the wrong colour often goes again.
+- **Prize balls.** Gold prize balls cost far more than a gumball, but every one that comes out gets
+  the neighbourhood talking, and the buzz brings in a bigger crowd for the next few days.
+- **Top up the globe** to share its free space among the flavours, or add one flavour at a time.
+
 ## How it's built
 
 Every machine runs on one engine, `js/vend/`: the simulation, the customers and the game screen. A
-machine adds its config (`js/soda/config.js`, `js/snack/config.js`) and its pixel art
+machine adds its config (`js/soda/config.js`, `js/snack/config.js`, `js/gumball/config.js`) and its pixel art
 (`js/machines.js`). The simulation runs without the page, so `npm test` plays a month of each machine
 in Node and checks that the money adds up. Games save themselves in your browser.
 

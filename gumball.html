@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gumballs — Vending Tycoon</title>
+  <meta name="description" content="Run a gumball machine: pick the flavour mix in the globe, set the price per turn, add prize balls and keep the kids coming back.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="gumball" class="game-page">
+  <canvas id="bg" class="bg" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <header class="bar">
+    <a class="back" href="index.html"><kbd>ESC</kbd> MENU</a>
+    <div class="clock"><span id="day">DAY 1</span> <b id="time">08:00</b></div>
+    <div class="wx" title="Weather"><canvas id="wx" aria-hidden="true"></canvas><span id="temp">22°C</span></div>
+    <div class="stars" id="rating" role="img" aria-label="Rating 3 of 5"><canvas id="stars" aria-hidden="true"></canvas></div>
+    <div class="speed" role="group" aria-label="Game speed">
+      <button class="btn small" data-speed="0" title="Pause (space)">II</button>
+      <button class="btn small" data-speed="1" title="Normal speed (1)">1X</button>
+      <button class="btn small" data-speed="2" title="Fast (2)">2X</button>
+      <button class="btn small" data-speed="5" title="Faster (3)">5X</button>
+      <button class="btn small" data-speed="10" title="Fastest (4)">10X</button>
+    </div>
+  </header>
+
+  <main class="game">
+    <section class="panel" aria-labelledby="machine-title">
+      <h2 id="machine-title">MACHINE <span id="state" class="pill">RUNNING</span></h2>
+      <div class="row big"><span>WALLET</span><b id="wallet">$40.00</b></div>
+      <div class="row"><span>COIN BOX</span><b id="cashbox">$0.00</b></div>
+      <div class="meter" aria-hidden="true"><i id="cashMeter"></i></div>
+      <button class="btn" id="collect">COLLECT CASH <kbd>C</kbd></button>
+      <button class="btn" id="restockAll">TOP UP GLOBE <span id="restockAllCost"></span></button>
+      <button class="btn warn" id="repair" hidden>FIX THE CRANK $4.00</button>
+      <div class="row"><span>GLOBE</span><b id="globe">160/200</b></div>
+      <div class="meter" aria-hidden="true"><i id="globeMeter"></i></div>
+      <div class="row"><span>PRIZE BUZZ</span><b class="small" id="hype">NONE</b></div>
+      <h2>TODAY</h2>
+      <dl class="stats">
+        <dt>CUSTOMERS</dt><dd id="sCustomers">0</dd>
+        <dt>TURNS</dt><dd id="sSold">0</dd>
+        <dt>SALES</dt><dd id="sRevenue">$0.00</dd>
+        <dt>PROFIT</dt><dd id="sProfit">$0.00</dd>
+        <dt>WALKED OFF</dt><dd id="sLost">0</dd>
+        <dt>ONE MORE GO</dt><dd id="sRepeats">0</dd>
+        <dt>TURNS PER BUYER</dt><dd id="sPerKid">—</dd>
+        <dt>PRIZES WON</dt><dd id="sPrizes">0</dd>
+      </dl>
+      <p class="why" id="sWhy"></p>
+      <button class="btn ghost" id="newGame">NEW GAME</button>
+    </section>
+
+    <section class="stagewrap">
+      <canvas id="stage" role="img" aria-label="The gumball machine on the street, with kids queuing for it"></canvas>
+      <p class="hint">CHANGE THE MIX IN THE FLAVOUR PANEL</p>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </section>
+
+    <section class="panel" aria-labelledby="slot-title">
+      <h2 id="slot-title">FLAVOUR</h2>
+      <div class="picker">
+        <button class="btn small" id="prevProduct" aria-label="Previous flavour">◀</button>
+        <canvas id="slotIcon" aria-hidden="true"></canvas>
+        <b id="productName">CHERRY BOMB</b>
+        <button class="btn small" id="nextProduct" aria-label="Next flavour">▶</button>
+      </div>
+      <div class="row"><span>IN THE GLOBE</span><b id="stock">30 BALLS</b></div>
+      <div class="row"><span>CHANCE PER TURN</span><b id="share">19%</b></div>
+      <div class="meter" aria-hidden="true"><i id="stockMeter"></i></div>
+      <div class="row price">
+        <span>PER TURN</span>
+        <button class="btn small" id="priceDown" aria-label="Lower the price">−</button>
+        <b id="price">$1.25</b>
+        <button class="btn small" id="priceUp" aria-label="Raise the price">+</button>
+      </div>
+      <div class="row dim"><span>A BALL COSTS YOU</span><span id="cost">$0.05</span></div>
+      <div class="row dim"><span>MARGIN PER TURN</span><span id="margin">$0.45</span></div>
+      <button class="btn" id="restock">ADD <span id="batch">25</span> BALLS <span id="restockCost"></span></button>
+      <p class="note">One price for every turn. A flavour's share of the globe is its chance of coming out; gold prize balls are pricey, but a winner gets everyone talking.</p>
+      <h2>LAST 7 DAYS</h2>
+      <canvas id="chart" role="img" aria-label="Sales and profit of the last seven days"></canvas>
+      <p class="legend"><i class="k-sales"></i>SALES <i class="k-profit"></i>PROFIT <i class="k-loss"></i>LOSS</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>const s = document.createElement('script'); s.src = 'js/boot.js?t=' + Date.now(); document.body.appendChild(s);</script>
+</body>
+</html>

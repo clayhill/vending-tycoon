@@ -4,8 +4,8 @@
  *
  *   VT.vendGame({ K: VT.SODA, draw: VT.drawSoda, icon: (fb, product) => … })
  *
- * Panels for extras (stale snacks, coil wear) are wired only when the page
- * has their elements. The game saves itself in this browser every few
+ * Panels for extras (stale snacks, coil wear, the gumball globe) are wired
+ * only when the page has their elements. The game saves itself in this browser every few
  * seconds, under the machine's own key. */
 (function (VT) {
   'use strict';
@@ -63,8 +63,9 @@
         drop = { at: t, color: PC[st.lastSale.p], shape: PR[st.lastSale.p].shape, two: st.lastSale.two };
       }
       return {
-        slots: st.slots.map(s => ({ color: PC[s.p], shape: PR[s.p].shape, stock: s.stock, cap: K.CAP, stale: A.staleCount(st, s), hang: s.hang })),
+        slots: st.slots.map(s => ({ color: PC[s.p], shape: PR[s.p].shape, prize: PR[s.p].prize, stock: s.stock, cap: K.CAP, stale: A.staleCount(st, s), hang: s.hang })),
         sel, drop, busy: st.customers.some(c => c.phase === 'use'),
+        total: A.total(st), cap: K.GLOBE || K.CAP, price: st.slots[0].price,
         sign: st.jam ? 'JAM!' : A.full(st) ? 'FULL' : null,
       };
     }
@@ -79,15 +80,17 @@
       for (const c of order) {
         const x = Math.round(c.x), foot = c.phase === 'leave' ? S.H - 3 : S.H - 9;
         const moving = c.phase === 'walk' || c.phase === 'leave';
-        VT.drawPerson(fb, x, foot, c.look, moving ? Math.floor(c.x / 3) & 3 : 0, c.phase === 'use');
-        if (c.bubble) VT.drawBubble(fb, x + 1, foot - 37, c.bubble, t);
-        else if (c.phase === 'use') VT.drawBubble(fb, x + 1, foot - 37, 'think', t);
+        VT.drawPerson(fb, x, foot, c.look, moving ? Math.floor(c.x / 3) & 3 : 0, c.phase === 'use', c.kid);
+        const by = foot - VT.bubbleHeight(c.kid);
+        if (c.bubble) VT.drawBubble(fb, x + 1, by, c.bubble, t);
+        else if (c.phase === 'use') VT.drawBubble(fb, x + 1, by, 'think', t);
       }
       fb.flush();
     }
 
-    // clicking an item on the machine selects its slot
+    // clicking an item on the machine selects its slot (a globe has none to click)
     function slotAt(e) {
+      if (!ART) return -1;
       const r = stage.getBoundingClientRect();
       const x = Math.floor(((e.clientX - r.left) / r.width) * S.W) - S.MX - ART.x;
       const y = Math.floor(((e.clientY - r.top) / r.height) * S.H) - S.MY - ART.y + 1;
@@ -167,6 +170,17 @@
         set('serviceCost', VT.money(K.STUCK.service));
         prop('service', 'disabled', !st.wear && !st.slots.some(s => s.hang));
       }
+      // the gumball globe and the buzz from prize wins
+      if (K.LOTTERY) {
+        const total = A.total(st);
+        set('globe', total + '/' + K.GLOBE);
+        $('globeMeter').style.width = (total / K.GLOBE) * 100 + '%';
+        $('globeMeter').classList.toggle('hot', total < K.GLOBE * 0.2);
+        set('hype', st.hype > 0.05 ? '+' + Math.round((A.hypeBoost(st) - 1) * 100) + '% CROWD' : 'NONE');
+        set('sPrizes', String(st.today.prizes)); set('sRepeats', String(st.today.repeats));
+        const turns = st.today.customers - (st.today.lostOut + st.today.lostPrice + st.today.lostQueue + st.today.lostBroken);
+        set('sPerKid', turns > 0 ? (st.today.sold / turns).toFixed(1) : '—');
+      }
       const staleN = A.staleTotal(st);
       set('binAllCount', staleN ? String(staleN) : '');
       prop('binAll', 'disabled', !staleN);
@@ -182,9 +196,18 @@
       const s = st.slots[sel], p = PR[s.p];
       set('slotName', A.slotName(sel)); set('productName', p.name);
       if (shown.icon !== s.p) { shown.icon = s.p; slotIcon.clear(); icon(slotIcon, s.p); slotIcon.flush(); }
-      set('stock', s.stock + '/' + K.CAP);
-      $('stockMeter').style.width = (s.stock / K.CAP) * 100 + '%';
-      $('stockMeter').classList.toggle('hot', s.stock <= 2);
+      if (K.LOTTERY) {
+        // a flavour's share of the globe, which is its chance on each turn
+        const total = A.total(st), share = total ? s.stock / total : 0;
+        set('stock', s.stock + ' BALLS'); set('share', Math.round(share * 100) + '%');
+        $('stockMeter').style.width = share * 100 + '%';
+        $('stockMeter').classList.toggle('hot', !s.stock && !p.prize);
+        set('batch', String(Math.min(K.BATCH, K.GLOBE - total)));
+      } else {
+        set('stock', s.stock + '/' + K.CAP);
+        $('stockMeter').style.width = (s.stock / K.CAP) * 100 + '%';
+        $('stockMeter').classList.toggle('hot', s.stock <= 2);
+      }
       set('price', VT.money(s.price)); set('cost', VT.money(p.cost)); moneyTo('margin', s.price - p.cost);
       const rc = A.restockCost(st, sel);
       set('restockCost', rc ? VT.money(rc) : '');
@@ -242,8 +265,10 @@
     on('restock', () => A.restock(st, sel));
     on('priceUp', () => A.setPrice(st, sel, st.slots[sel].price + K.PRICE_STEP));
     on('priceDown', () => A.setPrice(st, sel, st.slots[sel].price - K.PRICE_STEP));
-    on('prevProduct', () => A.setProduct(st, sel, (st.slots[sel].p + PR.length - 1) % PR.length));
-    on('nextProduct', () => A.setProduct(st, sel, (st.slots[sel].p + 1) % PR.length));
+    // on a gumball machine the arrows step through the flavours in the globe
+    const N = st.slots.length;
+    on('prevProduct', () => { if (K.LOTTERY) sel = (sel + N - 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + PR.length - 1) % PR.length); });
+    on('nextProduct', () => { if (K.LOTTERY) sel = (sel + 1) % N; else A.setProduct(st, sel, (st.slots[sel].p + 1) % PR.length); });
     document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => { speed = +b.dataset.speed; refresh(); }));
     let sure = 0;
     $('newGame').addEventListener('click', () => {

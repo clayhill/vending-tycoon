@@ -5,9 +5,10 @@
 globalThis.VT = {};
 require('../js/soda/config.js');
 require('../js/snack/config.js');
+require('../js/gumball/config.js');
 require('../js/vend/sim.js');
 const VT = globalThis.VT;
-const SODA = VT.vend(VT.SODA), SNACK = VT.vend(VT.SNACK);
+const SODA = VT.vend(VT.SODA), SNACK = VT.vend(VT.SNACK), GUM = VT.vend(VT.GUMBALL);
 
 let failed = 0;
 function check(ok, what) {
@@ -21,7 +22,8 @@ function attentive(A, st) {
   if (A.K.STUCK && st.wear >= 7) A.service(st);
   if (st.cashbox > 40) A.collect(st);
   A.binAllStale(st);
-  st.slots.forEach((s, i) => { if (s.stock <= 2) A.restock(st, i); });
+  if (A.K.LOTTERY) { if (A.total(st) < 80) A.restockAll(st); }
+  else st.slots.forEach((s, i) => { if (s.stock <= 2) A.restock(st, i); });
 }
 
 function play(A, seed, days, operator) {
@@ -37,6 +39,7 @@ function play(A, seed, days, operator) {
     check(st.cashbox >= 0 && st.cashbox < K.CASHBOX + K.PRICE_MAX, tag + ': coin box in range');
     check(st.customers.filter(c => c.phase !== 'leave').length <= K.STAGE.QUEUE, tag + ': queue no longer than its spots');
     check(st.log.length <= 40, tag + ': log trimmed');
+    check(!K.LOTTERY || (A.total(st) <= K.GLOBE && st.slots.every(s => s.price === st.slots[0].price)), tag + ': globe within capacity, one price');
     // every dollar is accounted for: what you hold now minus what you started
     // with equals the profit booked so far (sales minus item costs, rent,
     // repairs and waste)
@@ -57,7 +60,7 @@ function summary(st) {
   };
 }
 
-for (const A of [SODA, SNACK]) {
+for (const A of [SODA, SNACK, GUM]) {
   const K = A.K;
   // 1. an attentive operator over a month, on several seeds
   for (const seed of [1, 7, 42, 2024]) {
@@ -88,14 +91,15 @@ for (const A of [SODA, SNACK]) {
   // 4. prices: way too high scares everyone off
   {
     const st = A.create(3);
-    st.slots.forEach((s, i) => A.setPrice(st, i, 4.6));
-    check(st.slots[0].price === 4.5, `${K.ID}: prices snap to the 25c step`);
+    const high = Math.min(4.5, K.PRICE_MAX);
+    st.slots.forEach((s, i) => A.setPrice(st, i, high + 0.1));
+    check(st.slots[0].price === high, `${K.ID}: prices snap to the 25c step`);
     A.step(st, K.DAY * 2);
-    check(st.history.every(d => d.sold === 0) && st.history.some(d => d.lostPrice > 0), `${K.ID}: nobody pays $4.50`);
+    check(st.history.every(d => d.sold === 0) && st.history.some(d => d.lostPrice > 0), `${K.ID}: nobody pays ${VT.money(high)}`);
   }
 
   // 5. swapping a product refunds its items at cost
-  {
+  if (!K.LOTTERY) {
     const st = A.create(4), before = st.wallet, p0 = st.slots[0].p, other = (p0 + 2) % K.PRODUCTS.length;
     A.setProduct(st, 0, other);
     check(Math.abs(st.wallet - before - K.CAP * K.PRODUCTS[p0].cost) < 1e-9 && st.slots[0].stock === 0 && st.slots[0].p === other, `${K.ID}: swap refunds and empties the slot`);
@@ -125,6 +129,41 @@ for (const A of [SODA, SNACK]) {
   check(w.history.every(d => d.stuck <= d.sold), 'only sold snacks can stick');
   A.service(w);
   check(w.wear === 0 && w.slots.every(s => !s.hang) && A.stuckChance(w) === K.STUCK.base, 'a service resets the coils');
+}
+
+// gumballs only: chance, repeat goes, prizes and hype
+{
+  const A = GUM, K = A.K, prize = K.PRODUCTS.findIndex(p => p.prize);
+  const st = A.create(21);
+  A.setPrice(st, 3, 0.75);
+  check(st.slots.every(s => s.price === 0.75), 'one price for every turn');
+  A.restock(st, prize); A.restock(st, prize);
+  check(st.slots[prize].stock === 2 * K.BATCH - (2 * K.BATCH - st.slots[prize].stock) && A.total(st) <= K.GLOBE, 'a prize bag fits in the globe');
+  let hyped = false;
+  for (let h = 0; h < 30 * 24; h++) {
+    A.step(st, 60);
+    if (st.hype > 0) hyped = true;
+    if (st.cashbox > 30) A.collect(st);
+    if (st.jam) A.repair(st);
+    if (A.total(st) < 80) A.restockAll(st);
+  }
+  const sum = k => st.history.reduce((a, d) => a + d[k], 0);
+  console.log('gumball prizes', sum('prizes'), 'repeat goes', sum('repeats'), 'turns', sum('sold'));
+  check(sum('repeats') > 0, 'kids who miss their favourite go again');
+  check(sum('prizes') > 0 && hyped, 'prize balls get won and build hype');
+  check(st.hype <= 4, 'hype is capped');
+
+  const top = A.create(22);
+  top.wallet = 1000;
+  A.restockAll(top);
+  check(A.total(top) === K.GLOBE && top.slots[prize].stock === 0, 'topping up fills the globe, without prizes');
+
+  // a globe of only lemon: cherry fans often don't bother
+  const lemon = A.create(23);
+  lemon.slots.forEach((s, i) => { if (i !== 3) s.stock = 0; });
+  lemon.slots[3].stock = K.GLOBE;
+  A.step(lemon, K.DAY * 3);
+  check(lemon.history.some(d => d.lostOut > 0), 'kids skip a globe without their colour');
 }
 
 // an old soda save (from before snacks) still loads
