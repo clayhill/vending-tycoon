@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snacks — Vending Tycoon</title>
+  <meta name="description" content="Run a snack vending machine: set prices, restock the coils, bin stale snacks, service the coils and keep the customers happy.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="snack" class="game-page">
+  <canvas id="bg" class="bg" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <header class="bar">
+    <a class="back" href="index.html"><kbd>ESC</kbd> MENU</a>
+    <div class="clock"><span id="day">DAY 1</span> <b id="time">08:00</b></div>
+    <div class="wx" title="Weather"><canvas id="wx" aria-hidden="true"></canvas><span id="temp">22°C</span></div>
+    <div class="stars" id="rating" role="img" aria-label="Rating 3 of 5"><canvas id="stars" aria-hidden="true"></canvas></div>
+    <div class="speed" role="group" aria-label="Game speed">
+      <button class="btn small" data-speed="0" title="Pause (space)">II</button>
+      <button class="btn small" data-speed="1" title="Normal speed (1)">1X</button>
+      <button class="btn small" data-speed="2" title="Fast (2)">2X</button>
+      <button class="btn small" data-speed="5" title="Faster (3)">5X</button>
+      <button class="btn small" data-speed="10" title="Fastest (4)">10X</button>
+    </div>
+  </header>
+
+  <main class="game">
+    <section class="panel" aria-labelledby="machine-title">
+      <h2 id="machine-title">MACHINE <span id="state" class="pill">RUNNING</span></h2>
+      <div class="row big"><span>WALLET</span><b id="wallet">$40.00</b></div>
+      <div class="row"><span>COIN BOX</span><b id="cashbox">$0.00</b></div>
+      <div class="meter" aria-hidden="true"><i id="cashMeter"></i></div>
+      <button class="btn" id="collect">COLLECT CASH <kbd>C</kbd></button>
+      <button class="btn" id="restockAll">RESTOCK ALL <span id="restockAllCost"></span></button>
+      <button class="btn" id="binAll">BIN ALL STALE <span id="binAllCount"></span></button>
+      <div class="row"><span>COILS</span><b class="small" id="wear">GOOD</b></div>
+      <div class="meter" aria-hidden="true"><i id="wearMeter"></i></div>
+      <button class="btn" id="service">SERVICE <span id="serviceCost"></span> <kbd>S</kbd></button>
+      <h2>TODAY</h2>
+      <dl class="stats">
+        <dt>CUSTOMERS</dt><dd id="sCustomers">0</dd>
+        <dt>SNACKS SOLD</dt><dd id="sSold">0</dd>
+        <dt>SALES</dt><dd id="sRevenue">$0.00</dd>
+        <dt>PROFIT</dt><dd id="sProfit">$0.00</dd>
+        <dt>WALKED OFF</dt><dd id="sLost">0</dd>
+        <dt>GOT STUCK</dt><dd id="sStuck">0</dd>
+        <dt>SOLD STALE</dt><dd id="sStale">0</dd>
+        <dt>WASTE</dt><dd id="sWaste">$0.00</dd>
+      </dl>
+      <p class="why" id="sWhy"></p>
+      <button class="btn ghost" id="newGame">NEW GAME</button>
+    </section>
+
+    <section class="stagewrap">
+      <canvas id="stage" role="img" aria-label="The snack machine on the street, with customers queuing for it"></canvas>
+      <p class="hint">CLICK A SLOT ON THE MACHINE TO MANAGE IT</p>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </section>
+
+    <section class="panel" aria-labelledby="slot-title">
+      <h2 id="slot-title">SLOT <span id="slotName">A1</span></h2>
+      <div class="picker">
+        <button class="btn small" id="prevProduct" aria-label="Previous snack">◀</button>
+        <canvas id="slotIcon" aria-hidden="true"></canvas>
+        <b id="productName">PIXEL CHIPS</b>
+        <button class="btn small" id="nextProduct" aria-label="Next snack">▶</button>
+      </div>
+      <div class="row"><span>STOCK</span><b id="stock">6/6</b></div>
+      <div class="meter" aria-hidden="true"><i id="stockMeter"></i></div>
+      <div class="row price">
+        <span>PRICE</span>
+        <button class="btn small" id="priceDown" aria-label="Lower the price">−</button>
+        <b id="price">$1.25</b>
+        <button class="btn small" id="priceUp" aria-label="Raise the price">+</button>
+      </div>
+      <div class="row dim"><span>SNACK COSTS YOU</span><span id="cost">$0.50</span></div>
+      <div class="row dim"><span>MARGIN PER SNACK</span><span id="margin">$1.00</span></div>
+      <div class="row"><span>NEXT GOES STALE</span><b class="small" id="fresh">—</b></div>
+      <div class="row dim"><span>SHELF LIFE</span><span id="shelfLife">20 DAYS</span></div>
+      <button class="btn" id="restock">RESTOCK SLOT <span id="restockCost"></span></button>
+      <button class="btn" id="bin">BIN STALE <span id="binCount"></span> <kbd>B</kbd></button>
+      <p class="note">Swapping the snack sends this coil's fresh snacks back to the supplier at cost.</p>
+      <h2>LAST 7 DAYS</h2>
+      <canvas id="chart" role="img" aria-label="Sales and profit of the last seven days"></canvas>
+      <p class="legend"><i class="k-sales"></i>SALES <i class="k-profit"></i>PROFIT <i class="k-loss"></i>LOSS</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>const s = document.createElement('script'); s.src = 'js/boot.js?t=' + Date.now(); document.body.appendChild(s);</script>
+</body>
+</html>

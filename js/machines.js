@@ -185,6 +185,140 @@
   VT.drawSoda = soda;
   VT.drawCan = can;
 
+  // ---- the snack machine ----
+  const SN = {};
+  for (const [k, v] of Object.entries({
+    body: '#1186b3', bodyHi: '#44c8ee', bodyLo: '#0a5f82', side: '#08435e', sideLo: '#052f42',
+    neon: '#ff71ce', neonDim: '#6a1a4a', neonOff: '#3a1030', coil: '#b9b3d8', coilLo: '#6b5f9e',
+    stale: '#7a8a5a', stink: '#9be05a', bill: '#05ffa1',
+  })) SN[k] = VT.rgb(v);
+
+  // a snack, 7 wide and 6 tall, drawn by its shape
+  function snackItem(fb, x, y, shape, c) {
+    const hi = VT.mix(c, P.white, 0.45), lo = VT.mix(c, P.ink, 0.4);
+    if (shape === 'bag') { // a crimped bag with a label
+      fb.rect(x, y, 7, 1, lo);
+      for (let k = 0; k < 7; k += 2) fb.px(x + k, y, hi);
+      fb.rect(x, y + 1, 7, 4, c);
+      fb.rect(x + 1, y + 1, 1, 4, hi); fb.rect(x + 6, y + 1, 1, 4, lo);
+      fb.rect(x + 2, y + 2, 3, 2, P.white); fb.px(x + 3, y + 3, lo);
+      fb.rect(x, y + 5, 7, 1, lo);
+    } else if (shape === 'bar') { // a wrapped bar standing in the coil
+      fb.rect(x + 1, y, 5, 6, c);
+      fb.rect(x + 1, y, 5, 1, lo); fb.rect(x + 1, y + 5, 5, 1, lo);
+      fb.rect(x + 2, y + 1, 1, 4, hi);
+      fb.rect(x + 1, y + 2, 5, 2, P.white); fb.rect(x + 3, y + 2, 2, 2, lo);
+    } else if (shape === 'pack') { // cookies in a clear tray
+      fb.rect(x, y + 1, 7, 5, VT.mix(P.glass, P.white, 0.35));
+      fb.rect(x, y + 1, 7, 1, P.white);
+      fb.rect(x + 1, y + 2, 2, 2, c); fb.rect(x + 4, y + 2, 2, 2, c); fb.rect(x + 2, y + 4, 3, 1, c);
+      fb.px(x + 2, y + 2, lo); fb.px(x + 4, y + 3, lo); fb.px(x + 3, y + 4, lo);
+    } else if (shape === 'gummy') { // a see-through pack of gummies
+      fb.rect(x, y, 7, 1, lo);
+      fb.rect(x, y + 1, 7, 5, VT.mix(c, P.ink, 0.55));
+      const dots = [c, VT.rgb('#ff71ce'), VT.rgb('#fffb96')];
+      [[1, 2], [3, 1], [5, 2], [2, 4], [4, 4], [5, 4], [1, 4], [3, 3]].forEach(([dx, dy], k) => fb.px(x + dx, y + dy, dots[k % 3]));
+    } else { // 'tub': a round tub with a lid
+      fb.rect(x + 1, y, 5, 1, P.metal);
+      fb.rect(x, y + 1, 7, 1, P.metalLo);
+      fb.rect(x, y + 2, 7, 4, c);
+      fb.rect(x + 1, y + 2, 1, 4, hi); fb.rect(x + 6, y + 2, 1, 4, lo);
+      fb.rect(x + 2, y + 3, 3, 1, P.white);
+    }
+  }
+  VT.drawSnackItem = snackItem;
+
+  // the showpiece's contents when no game is running
+  const SHOW = [['bag', '#ff9e3d'], ['bag', '#ff9e3d'], ['bag', '#01cdfe'], ['bag', '#01cdfe'], ['bar', '#ff2a6d'], ['bar', '#ff2a6d'],
+    ['pack', '#e8a86a'], ['pack', '#e8a86a'], ['bag', '#ff9e3d'], ['gummy', '#05ffa1'], ['gummy', '#05ffa1'], ['bar', '#ff2a6d'],
+    ['tub', '#b967ff'], ['pack', '#e8a86a'], ['bag', '#01cdfe'], ['bar', '#ff2a6d'], ['bag', '#ff9e3d'], ['tub', '#b967ff'], ['gummy', '#05ffa1'], ['pack', '#e8a86a']];
+
+  // view (optional): { slots: [{ color, shape, stock, cap, stale, hang }],
+  // sel, sign, drop: { at, color, shape, two }, busy: a customer is typing }
+  function snack(fb, t, view) {
+    fb.clear();
+    shadow(fb, 5, 58);
+    fb.rect(5, 3, 54, 81, P.ink);
+    fb.rect(6, 4, 46, 79, SN.body);
+    fb.rect(6, 4, 46, 1, SN.bodyHi);
+    fb.rect(6, 4, 2, 79, SN.bodyHi);
+    fb.rect(50, 4, 2, 79, SN.bodyLo);
+    fb.rect(52, 4, 1, 79, P.ink);
+    fb.rect(53, 4, 5, 79, SN.side);
+    for (let y = 12; y < 78; y += 4) fb.rect(54, y, 3, 1, SN.sideLo);
+
+    // neon sign
+    fb.rect(8, 6, 42, 13, P.ink);
+    fb.rect(9, 7, 40, 11, P.sign);
+    const word = (view && view.sign) || 'SNACKS', alarm = word !== 'SNACKS';
+    const flick = (t + 2.3) % 7.1, on = alarm ? Math.floor(t * 2.5) % 2 === 0 : !(flick > 4.0 && flick < 4.1);
+    const tube = alarm ? P.alarm : SN.neon, glow = alarm ? P.alarmDim : SN.neonDim;
+    const wx = 9 + ((40 - VT.textWidth(word)) >> 1);
+    if (on) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) VT.text(fb, word, wx + dx, 9 + dy, 1, glow);
+    VT.text(fb, word, wx, 9, 1, on ? (gx, gy) => (gy < 2 ? VT.mix(tube, P.white, 0.6) : tube) : SN.neonOff);
+
+    // window: five shelves of four coils
+    fb.rect(8, 20, 37, 50, P.ink);
+    fb.frame(9, 21, 35, 48, P.metal);
+    fb.rect(10, 22, 33, 46, P.glass);
+    for (let r = 0; r < 5; r++) {
+      const y = 22 + r * 9;
+      fb.rect(10, y + 7, 33, 1, P.shelf);
+      fb.rect(10, y + 8, 33, 1, P.glassHi);
+      for (let c = 0; c < 4; c++) {
+        const x = 11 + c * 8, i = r * 4 + c;
+        for (let k = 0; k < 7; k++) fb.px(x + k, y + 6, k % 2 ? SN.coil : SN.coilLo); // the spiral
+        if (!view) { snackItem(fb, x, y, SHOW[i][0], VT.rgb(SHOW[i][1])); continue; }
+        const s = view.slots[i];
+        if (s.stock > 0) {
+          const stale = s.stale > 0;
+          snackItem(fb, x, y, s.shape, stale ? VT.mix(s.color, SN.stale, 0.7) : s.color);
+          if (stale) { const k = Math.floor(t * 4) % 3; fb.px(x + 1 + k * 2, y - (k & 1), SN.stink); fb.px(x + 2 + k, y + 1 - (k & 1), SN.stink); }
+        }
+        // a snack that got stuck hangs off the end of its coil
+        if (s.hang) snackItem(fb, x, y + 3, s.shape, s.color);
+        if (view.sel === i && Math.floor(t * 3) % 3) fb.frame(x - 1, y - 1, 9, 9, P.sel);
+        for (let k = 0; k < Math.min(7, s.cap); k++) {
+          fb.px(x + k, y + 7, k < s.stock ? (k < s.stale ? P.alarm : s.stock <= 2 ? P.low : P.lcdOn) : P.ink);
+        }
+      }
+    }
+    const sweep = ((t * 14) % 120) - 30;
+    for (let y = 22; y < 68; y++) for (let x = 10; x < 43; x++) {
+      const k = x - 10 + (y - 22) * 0.55 - sweep;
+      if (k >= 0 && k < 4) fb.blend(x, y, P.white, k < 1 || k >= 3 ? 0.15 : 0.32);
+    }
+
+    // keypad panel: display, twelve keys, coin and bill slots, coin return
+    fb.rect(45, 20, 6, 50, P.panel);
+    fb.frame(44, 20, 8, 50, P.ink);
+    fb.rect(45, 22, 6, 5, P.lcd);
+    const typing = view ? view.busy : Math.floor(t * 0.7) % 3 === 0;
+    const key = typing ? Math.floor(t * 5) % 12 : -1;
+    fb.rect(46, 23, 2, 3, P.lcdOn);
+    if (Math.floor(t * 2) % 2) fb.rect(49, 23, 1, 3, P.lcdOn);
+    for (let k = 0; k < 12; k++) fb.px(46 + (k % 3) * 2, 29 + Math.floor(k / 3) * 2, k === key ? P.sel : P.metal);
+    fb.rect(45, 38, 6, 5, P.metal); fb.rect(46, 38, 4, 1, P.white); fb.rect(47, 39, 1, 3, P.slot);
+    fb.rect(45, 45, 6, 3, P.slot); fb.rect(46, 46, 4, 1, Math.floor(t * 1.5) % 2 ? SN.bill : P.slot);
+    fb.rect(45, 61, 6, 5, P.metalLo); fb.rect(46, 62, 4, 3, P.slot);
+
+    // the pick-up flap, with whatever just dropped
+    fb.rect(6, 71, 46, 1, SN.bodyLo);
+    fb.rect(8, 73, 37, 9, P.ink);
+    fb.rect(9, 74, 35, 7, P.slot);
+    fb.rect(9, 74, 35, 2, P.metalLo); fb.rect(9, 74, 35, 1, P.metal);
+    const age = view ? (view.drop ? t - view.drop.at : 99) : ((t % 4.1) / 4.1 - 0.2) * 4.1;
+    if (age >= 0 && age < 2.4) {
+      const bounce = age < 0.27 ? Math.round(Math.sin((age / 0.27) * Math.PI) * -2) : 0;
+      const d = view ? view.drop : { shape: SHOW[Math.floor(t / 4.1) % 20][0], color: VT.rgb(SHOW[Math.floor(t / 4.1) % 20][1]) };
+      snackItem(fb, 22, 75 + bounce, d.shape, d.color);
+      if (d.two) snackItem(fb, 30, 75, d.shape, d.color);
+    }
+    fb.rect(6, 82, 46, 1, SN.bodyLo);
+    fb.rect(8, 84, 5, 2, P.ink); fb.rect(45, 84, 5, 2, P.ink);
+  }
+  VT.drawSnack = snack;
+
   // Bind a canvas to a machine's art. size: art pixels per CSS-pixel step.
   VT.art = function (canvas, kind, size) {
     const fb = new VT.FB(canvas);
@@ -196,7 +330,9 @@
     fit(); addEventListener('resize', fit);
     return {
       draw(t) {
-        if (kind === 'soda') soda(fb, t); else locked(fb, t, kind);
+        if (kind === 'soda') soda(fb, t);
+        else if (kind === 'snacks') snack(fb, t);
+        else locked(fb, t, kind);
         fb.flush();
       },
     };

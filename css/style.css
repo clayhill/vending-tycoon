@@ -224,3 +224,4 @@ body.warp .screen { animation: warp .45s steps(6) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .blink, .blink-slow, .cursor, .slot.shake { animation: none; }
 }
+.row b.small { font: 10px/1.2 'Press Start 2P', monospace; color: var(--text); }

@@ -3,6 +3,7 @@
 (function (VT) {
   'use strict';
   VT.SODA = {
+    ID: 'soda', NAME: 'SODA CANS', ITEMS: 'CANS', SAVE: 'vt.soda.v1',
     MIN_PER_SEC: 8,           // game minutes per real second at 1×
     SPEEDS: [0, 1, 2, 5, 10],
     DAY: 1440,                // minutes
@@ -17,6 +18,9 @@
     // how busy each hour of the day is, relative to the others
     HOURS: [0.1, 0.06, 0.04, 0.04, 0.06, 0.15, 0.4, 0.9, 1.0, 0.8, 0.8, 1.1, 1.6, 1.5, 1.2, 1.1, 1.2, 1.3, 1.1, 0.9, 0.7, 0.5, 0.3, 0.2],
     SKY: { sun: 1, cloud: 0.9, rain: 0.7 },
+    // hot days bring thirsty customers, who will also pay a little more
+    HEAT: t => Math.max(0.45, Math.min(1.5, 0.55 + (t - 10) * 0.035)),
+    WTP_HEAT: 0.015,
     // cost: what a can costs you; ref: what a typical fan would pay; pop: share of fans
     PRODUCTS: [
       { id: 'cola', name: 'NEON COLA', color: '#01cdfe', cost: 0.45, ref: 1.6, pop: 0.3 },
@@ -26,6 +30,8 @@
       { id: 'orange', name: 'SUNSET FIZZ', color: '#ff9e3d', cost: 0.4, ref: 1.5, pop: 0.2 },
     ],
     LAYOUT: [0, 0, 4, 1, 2, 3, 0, 4, 1, 2, 3, 0], // product per slot, row by row from the top
+    // where the slots sit in the 64×88 machine art: first item, pitch, item size
+    ART: { x: 14, y: 24, dx: 8, dy: 10, w: 7, h: 9 },
     // the stage in art pixels: machine position, the queue's spots, walking speed (px/min)
     STAGE: { W: 200, H: 104, MX: 70, MY: 4, FRONT: 58, GAP: 17, ENTER: -14, EXIT: 214, QUEUE: 4, WALK: 4, USE: 6 },
   };

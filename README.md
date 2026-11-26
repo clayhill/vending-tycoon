@@ -22,8 +22,27 @@ The first machine. You run a soda can vending machine on a neon street:
   (a full box refuses coins) and pay to fix the occasional coin jam. Rent is due every midnight.
 - **Keys:** arrows pick a slot, `+`/`-` price, `R` restock, `C` collect, space pauses, `1`–`4` speed.
 
-The game saves itself in your browser. The simulation lives in `js/soda/` and runs without the page,
-so `npm test` plays a month of it in Node and checks that the money adds up.
+## Snacks
+
+Twenty spiral coils of chips, bars, cookies, pretzels, gummies and nuts, with two problems the cans
+don't have:
+
+![The snack machine on day 6: stale cookies on the shelves, worn coils, and a stuck bar that dropped as a two-for-one](docs/screenshots/snack.png)
+
+- **Shelf life.** Every snack has a best-before date, from a week for cookies to two months for nuts.
+  Stale snacks still sell, but the buyer is disgusted and the rating takes a hit; bin them (`B`) and
+  the cost is written off as waste.
+- **Stuck snacks.** Now and then a snack hangs in its coil after the customer paid, and they leave
+  angry; the next buyer from that coil gets two for one. The coils wear a little every day and stick
+  more often until you pay for a service (`S`).
+- Customers buy snacks most in the afternoon and late at night, a little more on cold days.
+
+## How it's built
+
+Every machine runs on one engine, `js/vend/`: the simulation, the customers and the game screen. A
+machine adds its config (`js/soda/config.js`, `js/snack/config.js`) and its pixel art
+(`js/machines.js`). The simulation runs without the page, so `npm test` plays a month of each machine
+in Node and checks that the money adds up. Games save themselves in your browser.
 
 ## Running it
 

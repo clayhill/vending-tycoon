@@ -7,7 +7,8 @@
   const SHARED = ['js/pixel.js', 'js/font.js', 'js/scene.js', 'js/machines.js', 'js/icons.js'];
   const PAGES = {
     landing: ['js/landing.js'],
-    soda: ['js/soda/config.js', 'js/soda/sim.js', 'js/soda/people.js', 'js/soda/ui.js'],
+    soda: ['js/soda/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/soda/main.js'],
+    snack: ['js/snack/config.js', 'js/vend/sim.js', 'js/vend/people.js', 'js/vend/game.js', 'js/snack/main.js'],
   };
   const files = SHARED.concat(PAGES[document.body.dataset.page] || []);
   (function next(i) {
