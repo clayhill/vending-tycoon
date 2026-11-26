@@ -20,6 +20,7 @@ function check(ok, what) {
 // snacks, services worn coils and tops up slots (or, for coffee, empties the
 // grounds and refills what runs low or goes sour).
 function attentive(A, st) {
+  if (st.wreck) { if (!st.order) A.orderMachine(st); return; }
   if (st.jam) A.repair(st);
   if (A.K.STUCK && st.wear >= 7) A.service(st);
   if (st.cashbox > 40) A.collect(st);
@@ -228,7 +229,40 @@ for (const A of [SODA, SNACK, GUM, COFFEE]) {
 
   // neglected: the supplies run out and nothing more can be made
   const n = play(A, 36, 12, null);
-  check(n.slots.every((s, i) => A.canMake(n, i) === 0) || A.groundsFull(n), 'a neglected coffee machine runs dry or chokes on grounds');
+  check(n.slots.every((s, i) => A.canMake(n, i) === 0) || A.down(n), 'a neglected coffee machine runs dry, clogs or chokes on grounds');
+}
+
+// oddities and TNT, on every machine
+for (const base of [VT.SODA, VT.SNACK, VT.GUMBALL, VT.COFFEE]) {
+  // every sale weird, none of it TNT: customers are puzzled but it is paid for
+  const W = VT.vend(Object.assign({}, base, { WEIRD: 1, TNT: 0 })), K = W.K;
+  const w = W.create(51);
+  W.step(w, K.DAY);
+  const d = w.history[0];
+  check(d.sold > 0 && d.weird === d.sold && d.revenue > 0, `${K.ID}: oddities come out instead, and are paid for`);
+  check(w.log.some(e => e.text.startsWith('WHAT?')), `${K.ID}: the log says what came out`);
+  check(!w.wreck, `${K.ID}: an oddity alone does not blow anything up`);
+
+  // every oddity TNT: the first sale ends in a wreck
+  const T = VT.vend(Object.assign({}, base, { WEIRD: 1, TNT: 1 }));
+  const t = T.create(52);
+  const start = t.wallet + t.cashbox + T.stockValue(t);
+  let lit = false;
+  for (let m = 0; m < 24 * 60 && !t.wreck; m++) { T.step(t, 1); if (t.customers.some(c => c.tnt)) lit = true; }
+  check(lit && t.wreck, `${K.ID}: the customer picks up lit TNT and the machine explodes`);
+  check(T.stockValue(t) === 0 && t.cashbox === 0 && t.today.wreck > 0, `${K.ID}: the explosion takes stock and coin box`);
+  check(t.customers.some(c => c.flee && c.charred) && !t.customers.some(c => c.phase === 'use'), `${K.ID}: everyone runs, the TNT customer singed`);
+  check(T.restockAll(t) === 0 || T.stockValue(t) === 0, `${K.ID}: a wreck cannot be restocked`);
+  const sold = t.today.sold;
+  T.step(t, 120);
+  check(t.today.sold === sold && t.wreck, `${K.ID}: a wreck sells nothing`);
+  const wallet = t.wallet;
+  check(T.orderMachine(t) && !T.orderMachine(t) && Math.abs(wallet - t.wallet - K.MACHINE) < 1e-9, `${K.ID}: ordering a new machine costs ${K.MACHINE}, once`);
+  T.step(t, K.DELIVERY + 1);
+  check(!t.wreck && !t.order, `${K.ID}: the new machine arrives`);
+  const booked = t.history.reduce((a, x) => a + x.profit, 0) + T.profit(t.today);
+  check(Math.abs(t.wallet + t.cashbox + T.stockValue(t) - start - booked) < 0.05, `${K.ID}: the explosion and new machine are booked`);
+  check(T.stockValue(t) > 0, `${K.ID}: the new machine arrives filled`);
 }
 
 // an old soda save (from before snacks) still loads

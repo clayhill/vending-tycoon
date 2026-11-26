@@ -26,6 +26,8 @@
     sun: ['....y....', '.y.....y.', '...yyy...', '..yyyyy..', 'y.yyyyy.y', '..yyyyy..', '...yyy...', '.y.....y.', '....y....'],
     cloud: ['.........', '.........', '...www...', '..wwwww..', '.wwwwwww.', 'wwwwwwwww', '.sssssss.', '.........', '.........'],
     rain: ['...sss...', '..sssss..', '.sssssss.', 'sssssssss', '.........', '.c..c..c.', 'c..c..c..', '.........', '.........'],
+    what: ['..vvv..', '.v...v.', '.....v.', '....v..', '...v...', '.......', '...v...'],
+    boom: ['o..y..o', '.oyyyo.', '.yyryy.', 'yyrrryy', '.yyryy.', '.oyyyo.', 'o..y..o'],
     star: ['...y...', '...y...', 'yyyyyyy', '.yyyyy.', '..yyy..', '.yy.yy.', 'y.....y'],
   };
 

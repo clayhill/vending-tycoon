@@ -294,3 +294,20 @@ html.hd #stage { filter: drop-shadow(0 0 24px rgba(255, 42, 109, .22)); }
 html.hd .row b.small { font-size: 10px; }
 html.hd .row span { white-space: nowrap; }
 html.hd .tag { text-shadow: 0 0 12px rgba(1, 205, 254, .7); }
+
+/* ---- the explosion ---- */
+.stagewrap.shake { animation: shake .7s cubic-bezier(.36, .07, .19, .97) 1; }
+@keyframes shake {
+  0% { transform: translate(0, 0); }
+  8% { transform: translate(-9px, 6px) rotate(-1deg); }
+  16% { transform: translate(8px, -7px) rotate(1deg); }
+  26% { transform: translate(-7px, -4px); }
+  36% { transform: translate(6px, 5px) rotate(.5deg); }
+  48% { transform: translate(-4px, 2px); }
+  62% { transform: translate(3px, -2px); }
+  78% { transform: translate(-1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+.toast b.boom { color: var(--hot); font-size: 22px; text-shadow: 3px 3px 0 var(--sun); }
+.btn.boom:not([disabled]) { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { box-shadow: 0 0 0 2px var(--sun), 0 0 18px var(--hot); } }

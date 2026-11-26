@@ -30,7 +30,15 @@
  *    supply with a `life` goes sour that many days after it was filled from
  *    empty (topping it up keeps the old date); a drink made with it is
  *    disgusting. Every shot of beans leaves grounds, and when the GROUNDS bin
- *    is full the machine stops until someone empties it. */
+ *    is full the machine stops until someone empties it.
+ *
+ * Every machine, now and then, drops something that has no business being
+ * in a vending machine instead of what was paid for (WEIRD: the chance per
+ * sale). Rarely, that something is a bundle of TNT: the customer picks it up,
+ * the fuse burns down, and the machine explodes, taking its stock and the
+ * coin box with it. The smoking wreck sells nothing until a new machine is
+ * ordered (MACHINE dollars) and delivered (DELIVERY minutes), filled like
+ * the first one. */
 (function (VT) {
   'use strict';
   const STEP = 0.25; // minutes
@@ -48,8 +56,13 @@
   function gauss(st) { return Math.sqrt(-2 * Math.log(rand(st) || 1e-9)) * Math.cos(2 * Math.PI * rand(st)); }
   const blankDay = () => ({
     customers: 0, sold: 0, revenue: 0, cogs: 0, lostOut: 0, lostPrice: 0, lostQueue: 0, lostBroken: 0,
-    rent: 0, repairs: 0, waste: 0, stuck: 0, stale: 0, prizes: 0, repeats: 0,
+    rent: 0, repairs: 0, waste: 0, stuck: 0, stale: 0, prizes: 0, repeats: 0, weird: 0, wreck: 0,
   });
+  // the oddities, and what the log calls them
+  VT.ODDITIES = { duck: 'A RUBBER DUCK', fish: 'A WET FISH', boot: 'AN OLD BOOT', tape: 'A MIXTAPE', cactus: 'A TINY CACTUS', gnome: 'A GARDEN GNOME', tnt: 'A BUNDLE OF TNT' };
+  const ODD = Object.keys(VT.ODDITIES).filter(k => k !== 'tnt');
+  const TNT_SHARE = 0.05; // of the oddities, how many are TNT
+  const FUSE = 14;        // game minutes from picking up the TNT to the bang
 
   VT.vend = function (K) {
     const S = K.STAGE, P = K.PRODUCTS, N = K.ROWS * K.COLS;
@@ -58,6 +71,7 @@
     const PERISH = P.some(p => p.life), LOTTO = !!K.LOTTERY, BREW = !!K.SUPPLY;
     const SUP = BREW ? Object.keys(K.SUPPLY) : [];
     const A = { K };
+    const WEIRD = K.WEIRD === undefined ? 0.006 : K.WEIRD, TNT = K.TNT === undefined ? TNT_SHARE : K.TNT;
     A.total = st => st.slots.reduce((a, s) => a + s.stock, 0);
     const space = st => (LOTTO ? K.GLOBE - A.total(st) : Infinity);
 
@@ -82,26 +96,33 @@
       const st = {
         v: 1, machine: K.ID, seed: seed >>> 0, rng: seed >>> 0, t: 8 * 60, seq: 0, sales: 0, nextId: 1,
         wallet: K.START_WALLET, cashbox: 0, rating: 3, jam: false, wear: 0, hype: 0, temp: 22, sky: 'sun',
+        wreck: null, order: null, booms: 0, arrivals: 0,
         slots: [], customers: [], today: blankDay(), history: [], log: [], lastSale: null,
       };
       K.LAYOUT.forEach((p, i) => {
         const s = { p, stock: 0, price: P[p].start || K.START_PRICE, hang: false };
         if (PERISH) s.exp = [];
-        add(st, s, LOTTO ? K.START_MIX[i] : BREW ? 0 : K.CAP);
-        // the stock you start with was delivered over the last few days
-        if (s.exp) { const age = Math.floor(rand(st) * P[p].life * 0.5) * K.DAY; s.exp = s.exp.map(e => e - age); }
         st.slots.push(s);
       });
-      if (BREW) {
-        st.sup = {}; st.supExp = {}; st.grounds = 0;
-        for (const k of SUP) {
-          st.sup[k] = K.SUPPLY[k].cap;
-          if (K.SUPPLY[k].life) st.supExp[k] = st.t + K.SUPPLY[k].life * K.DAY;
-        }
-      }
+      if (BREW) { st.sup = {}; st.supExp = {}; st.grounds = 0; }
+      fill(st, true);
       log(st, 'info', 'DAY 1: YOUR MACHINE IS OPEN FOR BUSINESS');
       return st;
     };
+
+    // a machine from the factory comes filled: a full set of each product (or,
+    // for gumballs, the starter mix; for coffee, full tanks)
+    function fill(st, first) {
+      st.slots.forEach((s, i) => {
+        add(st, s, LOTTO ? K.START_MIX[i] : BREW ? 0 : K.CAP);
+        // the stock you start with was delivered over the last few days
+        if (first && s.exp) { const age = Math.floor(rand(st) * P[s.p].life * 0.5) * K.DAY; s.exp = s.exp.map(e => e - age); }
+      });
+      if (BREW) for (const k of SUP) {
+        st.sup[k] = K.SUPPLY[k].cap;
+        if (K.SUPPLY[k].life) st.supExp[k] = st.t + K.SUPPLY[k].life * K.DAY;
+      }
+    }
 
     // fill in fields that older saves do not have
     A.upgrade = function (st) {
@@ -112,7 +133,8 @@
         if (s.hang === undefined) s.hang = false;
         if (PERISH && !s.exp) s.exp = Array(s.stock).fill(st.t + K.DAY * 3);
       }
-      for (const d of st.history) for (const k of ['waste', 'stuck', 'stale', 'prizes', 'repeats']) if (d[k] === undefined) d[k] = 0;
+      for (const d of st.history) for (const k of ['waste', 'stuck', 'stale', 'prizes', 'repeats', 'weird', 'wreck']) if (d[k] === undefined) d[k] = 0;
+      if (st.wreck === undefined) { st.wreck = null; st.order = null; st.booms = 0; st.arrivals = 0; }
       return st;
     };
 
@@ -122,7 +144,7 @@
       const m = Math.floor(t % K.DAY);
       return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
     };
-    A.profit = d => cents(d.revenue - d.cogs - d.rent - d.repairs - (d.waste || 0));
+    A.profit = d => cents(d.revenue - d.cogs - d.rent - d.repairs - (d.waste || 0) - (d.wreck || 0));
     A.stockValue = st => cents(BREW ? SUP.reduce((a, k) => a + st.sup[k] * K.SUPPLY[k].cost, 0)
       : st.slots.reduce((s, x) => s + x.stock * P[x.p].cost, 0));
     // ---- brewing (coffee) ----
@@ -130,7 +152,7 @@
     A.canMake = (st, i) => Math.min(...Object.entries(P[st.slots[i].p].use).map(([k, n]) => Math.floor(st.sup[k] / n + 1e-9)));
     A.sour = (st, k) => !!(K.SUPPLY[k].life && st.sup[k] > 0 && st.supExp[k] <= st.t);
     A.groundsFull = st => BREW && st.grounds >= K.GROUNDS;
-    A.down = st => st.jam || A.full(st) || A.groundsFull(st);
+    A.down = st => !!st.wreck || st.jam || A.full(st) || A.groundsFull(st);
     A.full = st => st.cashbox >= K.CASHBOX - 1e-9;
     // word of a prize win spreads: each point of hype brings 12% more customers
     A.hypeBoost = st => 1 + 0.12 * (st.hype || 0);
@@ -155,7 +177,8 @@
       const day = Math.floor(st.t / K.DAY);
       st.t += dt;
       if (Math.floor(st.t / K.DAY) !== day) endDay(st);
-      if (K.JAMS_PER_DAY && !st.jam && rand(st) < (K.JAMS_PER_DAY * dt) / K.DAY) {
+      if (st.order && st.t >= st.order.at) deliver(st);
+      if (K.JAMS_PER_DAY && !st.jam && !st.wreck && rand(st) < (K.JAMS_PER_DAY * dt) / K.DAY) {
         st.jam = true;
         log(st, 'warn', K.JAM_MSG || 'COIN JAM! THE MACHINE NEEDS A REPAIR');
       }
@@ -213,7 +236,11 @@
         if (c.phase === 'use') {
           if ((c.timer -= dt) <= 0) {
             // a brewed drink is ready: take it and say how it is
-            if (c.brewing) { c.brewing = false; c.phase = 'leave'; c.bubble = c.after; c.bubbleT = 36; } else decide(st, c);
+            if (c.tnt) explode(st, c);
+            else if (c.brewing) {
+              c.brewing = false; c.phase = 'leave'; c.bubble = c.after; c.bubbleT = 36;
+              if (c.odd) { const w = c.odd; c.odd = null; st.lastSale = { n: ++st.sales, slot: c.slot, p: c.cup, weird: w }; oddity(st, c, w); }
+            } else decide(st, c);
           }
           return;
         }
@@ -224,7 +251,7 @@
         }
       });
       for (const c of st.customers) {
-        if (c.phase === 'leave') c.x += S.WALK * 1.3 * dt;
+        if (c.phase === 'leave') c.x += S.WALK * (c.flee ? 3.2 : 1.3) * dt;
         if (c.bubbleT > 0 && (c.bubbleT -= dt) <= 0) c.bubble = null;
       }
       st.customers = st.customers.filter(c => c.x < S.EXIT);
@@ -263,7 +290,9 @@
       } else {
         s.hang = false;
         st.lastSale = { n: ++st.sales, slot: i, p: s.p, two: bonus };
-        if (stale) {
+        const w = roll(st);
+        if (w) { st.lastSale.weird = w; oddity(st, c, w, p.name); }
+        else if (stale) {
           d.stale++; c.bubble = 'yuck'; rate(st, -0.05);
           log(st, 'lost', `SOLD A STALE ${p.name}. YUCK!`);
         } else if (bonus) {
@@ -287,8 +316,10 @@
       st.cashbox = cents(st.cashbox + s.price);
       d.sold++; d.revenue = cents(d.revenue + s.price); d.cogs = cents(d.cogs + p.cost);
       st.lastSale = { n: ++st.sales, slot: i, p: s.p };
-      c.phase = 'use'; c.brewing = true; c.timer = p.brew; c.bubble = null; c.cup = s.p;
-      if (sour.length) {
+      c.phase = 'use'; c.brewing = true; c.timer = p.brew; c.bubble = null; c.cup = s.p; c.slot = i;
+      c.odd = roll(st);
+      if (c.odd) { /* what comes out is shown when the brew is done */ }
+      else if (sour.length) {
         d.stale++; c.after = 'yuck'; rate(st, -0.05);
         log(st, 'lost', `SERVED A ${p.name} WITH SOUR ${K.SUPPLY[sour[0]].name}. YUCK!`);
       } else {
@@ -298,6 +329,55 @@
       if (A.full(st)) log(st, 'warn', 'COIN BOX FULL! COLLECT THE CASH');
       if (A.groundsFull(st)) log(st, 'warn', 'GROUNDS BIN FULL! EMPTY IT');
       for (const k in p.use) if (st.sup[k] === 0) log(st, 'warn', `OUT OF ${K.SUPPLY[k].name}`);
+    }
+
+    // ---- oddities and TNT ----
+    const roll = st => (rand(st) < WEIRD ? (rand(st) < TNT ? 'tnt' : ODD[Math.floor(rand(st) * ODD.length)]) : null);
+    // what the customer does with it: puzzled, or holding a lit fuse
+    function oddity(st, c, w, wanted) {
+      const what = wanted || P[c.cup] && P[c.cup].name || K.ITEMS;
+      c.held = w;
+      if (w === 'tnt') {
+        c.tnt = true; c.phase = 'use'; c.timer = FUSE; c.bubble = 'broken'; c.bubbleT = FUSE;
+        log(st, 'warn', `UH-OH. ${VT.ODDITIES.tnt} CAME OUT INSTEAD OF THE ${what}`);
+        return;
+      }
+      st.today.weird++;
+      c.phase = 'leave'; c.bubble = 'what'; c.bubbleT = 36; rate(st, -0.004);
+      log(st, 'day', `WHAT? ${VT.ODDITIES[w]} CAME OUT INSTEAD OF THE ${what}`);
+    }
+    // the TNT goes off: the machine, its stock and the coin box are gone
+    function explode(st, c) {
+      const d = st.today, lost = cents(A.stockValue(st) + st.cashbox);
+      d.wreck = cents(d.wreck + lost);
+      for (const s of st.slots) { s.stock = 0; s.hang = false; if (s.exp) s.exp = []; }
+      if (BREW) { for (const k of SUP) st.sup[k] = 0; st.grounds = 0; }
+      st.cashbox = 0; st.jam = false; st.wear = 0; st.hype = 0;
+      st.wreck = { n: ++st.booms, t: st.t }; st.order = null;
+      rate(st, -0.4);
+      c.tnt = false; c.held = null; c.charred = true;
+      for (const o of st.customers) {
+        o.phase = 'leave'; o.flee = true; o.brewing = false; o.bubble = o === c ? 'boom' : 'broken'; o.bubbleT = 30;
+        if (Math.abs(o.x - c.x) < 20) o.charred = true;
+      }
+      log(st, 'lost', `KABOOM! THE TNT WENT OFF AND THE MACHINE EXPLODED (${VT.money(lost)} OF STOCK AND CASH LOST)`);
+    }
+    // a new machine: ordered from the wreck, it arrives empty
+    A.orderMachine = function (st) {
+      if (!st.wreck || st.order) return false;
+      st.wallet = cents(st.wallet - K.MACHINE);
+      st.today.wreck = cents(st.today.wreck + K.MACHINE);
+      st.order = { at: st.t + K.DELIVERY };
+      log(st, 'info', `ORDERED A NEW MACHINE FOR ${VT.money(K.MACHINE)}. IT ARRIVES FILLED IN ${Math.round(K.DELIVERY / 60 * 10) / 10} HOURS`);
+      return true;
+    };
+    function deliver(st) {
+      st.wreck = null; st.order = null; st.arrivals = (st.arrivals || 0) + 1;
+      // the factory fill was part of the price: it is stock now, not a cost
+      const before = A.stockValue(st);
+      fill(st, false);
+      st.today.wreck = cents(st.today.wreck - (A.stockValue(st) - before));
+      log(st, 'day', 'YOUR NEW MACHINE HAS ARRIVED, FILLED AND READY TO SELL!');
     }
 
     // A turn of the gumball crank: pay, get whatever ball comes out.
@@ -320,7 +400,9 @@
       d.sold++; d.revenue = cents(d.revenue + price); d.cogs = cents(d.cogs + p.cost);
       c.spins = spins + 1;
       st.lastSale = { n: ++st.sales, slot: i, p: s.p };
-      if (p.prize) {
+      const w = roll(st);
+      if (w) { st.lastSale.weird = w; oddity(st, c, w, 'GUMBALL'); }
+      else if (p.prize) {
         d.prizes++; c.bubble = 'prize'; rate(st, 0.08);
         st.hype = Math.min(4, (st.hype || 0) + 1);
         log(st, 'day', `JACKPOT! A KID WON THE ${p.name}`);
@@ -344,8 +426,8 @@
       const d = st.today, name = P[c.fav].name;
       c.bubble = why;
       if (why === 'broken') {
-        d.lostBroken++; rate(st, -0.03);
-        log(st, 'lost', st.jam ? (K.JAM_LOST || 'NO SALE: THE MACHINE IS JAMMED')
+        d.lostBroken++; rate(st, st.wreck ? -0.005 : -0.03);
+        log(st, 'lost', st.wreck ? 'NO SALE: THE MACHINE IS A SMOKING WRECK' : st.jam ? (K.JAM_LOST || 'NO SALE: THE MACHINE IS JAMMED')
           : A.full(st) ? 'NO SALE: THE COIN BOX IS FULL' : 'NO SALE: THE GROUNDS BIN IS FULL');
       } else if (why === 'price') {
         d.lostPrice++; rate(st, -0.01);
@@ -418,6 +500,7 @@
     // buys as many items as the wallet allows
     function restock(st, i, upto) {
       const s = st.slots[i], cost = P[s.p].cost;
+      if (st.wreck) return { n: 0, cost: 0 };
       const n = Math.min(upto === undefined ? want(st, i) : upto, Math.max(0, Math.floor((st.wallet + 1e-9) / cost)));
       add(st, s, n);
       st.wallet = cents(st.wallet - n * cost);
@@ -440,6 +523,7 @@
     };
     function refill(st, k) {
       const S = K.SUPPLY[k];
+      if (st.wreck) return { n: 0, cost: 0 };
       if (A.sour(st, k)) A.drain(st, k);
       const n = Math.min(S.cap - st.sup[k], Math.max(0, Math.floor((st.wallet + 1e-9) / S.cost)));
       if (n <= 0) return { n: 0, cost: 0 };

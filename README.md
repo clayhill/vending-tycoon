@@ -67,6 +67,17 @@ commute builds a line.
   until you empty it (`G`).
 - Cold and rainy days bring more customers, who pay more; the kiosk's rent is the highest of all.
 
+## Things that should not come out of a vending machine
+
+Every machine, once in a while, drops something nobody paid for instead of the product: a rubber
+duck, a wet fish, an old boot, a mixtape, a tiny cactus, a garden gnome. The customer is puzzled
+but it was paid for. Very rarely it is a bundle of TNT with wires and a lit fuse. The game drops to
+normal speed so you see it coming. The customer picks it up, the fuse burns down, and the machine
+explodes, taking its stock and the coin box with it. The smoking wreck sells nothing: order a new
+machine (`O`). It arrives filled, a couple of game hours later.
+
+![A customer holding lit TNT at the soda machine, while two others walk off puzzled with a rubber duck and a garden gnome](docs/screenshots/oddities.png)
+
 ## Pixel or HD
 
 The switch at the top of every page picks how it is drawn: **PIXEL**, the low-resolution pixel art
@@ -80,7 +91,7 @@ browser.
 
 Every machine runs on one engine, `js/vend/`: the simulation, the customers and the game screen. A
 machine adds its config (`js/soda/config.js`, `js/snack/config.js`, `js/gumball/config.js`, `js/coffee/config.js`) and its pixel art
-(`js/machines.js`, and `js/machines-hd.js` for HD; the HD backdrop, customers and icons are in `js/hd.js`). The simulation runs without the page, so `npm test` plays a month of each machine
+(`js/machines.js`, and `js/machines-hd.js` for HD; the HD backdrop, customers and icons are in `js/hd.js`; the oddities, the explosion and the wreck in `js/boom.js`). The simulation runs without the page, so `npm test` plays a month of each machine
 in Node and checks that the money adds up. Games save themselves in your browser.
 
 ## Running it

@@ -65,11 +65,13 @@
       }
     }
 
-    let lastSale = st.lastSale ? st.lastSale.n : 0, drop = null;
+    let lastSale = st.lastSale ? st.lastSale.n : 0, drop = null, odd = null;
     function view(t) {
       if (st.lastSale && st.lastSale.n !== lastSale) {
         lastSale = st.lastSale.n;
-        drop = { at: t, color: PC[st.lastSale.p], shape: PR[st.lastSale.p].shape, two: st.lastSale.two };
+        // an oddity comes out instead of the product: the machine drops nothing of its own
+        if (st.lastSale.weird) { drop = null; odd = { at: t, kind: st.lastSale.weird }; }
+        else drop = { at: t, color: PC[st.lastSale.p], shape: PR[st.lastSale.p].shape, two: st.lastSale.two };
       }
       const sign = st.jam ? (K.JAM_SIGN || 'JAM!') : A.full(st) ? 'FULL' : A.groundsFull(st) ? 'BIN!' : null;
       if (K.SUPPLY) {
@@ -90,6 +92,44 @@
       };
     }
 
+    // ---- oddities, the explosion, the wreck and the new machine (js/boom.js) ----
+    const GEO = { x0: S.MX + K.FOOT[0], x1: S.MX + K.FOOT[1], top: S.MY + 4, base: S.MY + 86, body: K.BODY };
+    GEO.cx = (GEO.x0 + GEO.x1) / 2; GEO.cy = S.MY + 52;
+    const HATCH = [S.MX + K.HATCH[0], S.MY + K.HATCH[1]];
+    let seenBoom = st.wreck ? st.wreck.n : st.booms || 0, seenArr = st.arrivals || 0, boom = null, boomAt = 0, arriveAt = -99, litId = 0;
+    const BLAST = 0.1; // seconds into the blast when the machine turns into a wreck
+    function effects(t) {
+      if (st.wreck && st.wreck.n !== seenBoom) {
+        seenBoom = st.wreck.n; boomAt = t;
+        boom = VT.makeBoom(GEO, [K.BODY].concat(PR.map(p => p.color)), st.wreck.n + st.seed);
+        kaboom();
+      }
+      if ((st.arrivals || 0) !== seenArr) { seenArr = st.arrivals || 0; arriveAt = t; }
+      if (boom && VT.boomDone(boom, t - boomAt)) boom = null;
+      // a lit fuse: the game drops to normal speed so you see it coming
+      const lit = st.customers.find(c => c.tnt);
+      if (lit && lit.id !== litId) { litId = lit.id; if (speed > 1) { speed = 1; refresh(); } }
+    }
+    function kaboom() {
+      const wrap = stage.parentElement;
+      if (!VT.reduced) { wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake'); }
+      const el = $('toast');
+      el.innerHTML = `<b class="boom">KABOOM!</b><span>THE MACHINE BLEW UP</span><span class="neg">LOST ${VT.money(st.today.wreck)} IN STOCK AND CASH</span><small>ORDER A NEW MACHINE TO KEEP SELLING</small>`;
+      // let the blast play before the news covers it
+      el.classList.remove('show'); clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.classList.add('show'); toastTimer = setTimeout(() => el.classList.remove('show'), 5000); }, 1300);
+      save();
+    }
+    const showMachine = t => !st.wreck || (boom && t - boomAt < BLAST);
+    const machineDY = t => Math.round(VT.arriveDY(t - arriveAt));
+    // what a customer holds: up at the machine for the lit TNT, by their side when leaving
+    const hand = (c, t) => {
+      if (!c.held || (odd && odd.kind === c.held && t - odd.at < 0.45)) return null;
+      const foot = c.phase === 'leave' ? S.H - 3 : S.H - 9;
+      return c.phase === 'use' ? [c.x + 9, foot - (c.kid ? 15 : 21)] : [c.x + 0.5, foot - (c.kid ? 9 : 12)];
+    };
+    const hatchOdd = t => odd && t - odd.at < 0.45 + (odd.kind === 'tnt' ? 0 : 0.3);
+
     function pavementHD(c) {
       const top = S.H - 16, H = VT.HD;
       c.fillStyle = H.lin(c, 0, top, 0, S.H, [[0, '#24104a'], [0.5, '#1c0838'], [1, '#0e0322']]); c.fillRect(0, top, S.W, 16);
@@ -101,34 +141,55 @@
     function drawStageHD(t) {
       const c = so.begin(), H = VT.HD;
       pavementHD(c);
-      c.save(); c.translate(S.MX, S.MY); drawHD(c, t, view(t)); c.restore();
+      const v = view(t);
+      if (showMachine(t)) { c.save(); c.translate(S.MX, S.MY + VT.arriveDY(t - arriveAt)); drawHD(c, t, v); c.restore(); }
+      else VT.drawWreckHD(c, GEO, t, st.wreck.n);
+      VT.drawDustHD(c, GEO, t - arriveAt);
+      if (hatchOdd(t)) VT.HD.oddity(c, HATCH[0], HATCH[1], odd.kind, t);
       const order = st.customers.slice().sort((a, b) => (a.phase === 'leave') - (b.phase === 'leave'));
       for (const p of order) {
         const foot = p.phase === 'leave' ? S.H - 3 : S.H - 9, moving = p.phase === 'walk' || p.phase === 'leave';
         c.save(); c.globalAlpha = 0.5; c.fillStyle = '#05000d'; c.beginPath(); c.ellipse(p.x + 0.5, foot + 0.3, 5, 1.1, 0, 0, 7); c.fill(); c.restore();
+        if (p.charred) c.filter = 'brightness(0.3) saturate(0.5)';
         H.person(c, p.x, foot, p.look, moving ? p.x / 3 : null, p.phase === 'use', p.kid);
+        if (p.charred) {
+          c.filter = 'none';
+          const hy = foot - 1 - (p.kid ? 6 : 9.5) - (p.kid ? 9 : 12) - 5.4;
+          c.fillStyle = '#fff'; c.beginPath(); c.arc(p.x + 2.9, hy - 0.4, 0.75, 0, 7); c.fill();
+          H.singed(c, p.x, hy - 5, t);
+        }
+        const held = hand(p, t);
+        if (held) H.oddity(c, held[0], held[1], p.held, t);
         const by = foot - VT.bubbleHeight(p.kid);
         if (p.bubble) H.bubble(c, p.x + 1, by, p.bubble, t);
         else if (p.phase === 'use') H.bubble(c, p.x + 1, by, 'think', t);
       }
+      if (boom) VT.drawBoomHD(c, boom, t - boomAt, S.W, S.H);
     }
 
     function drawStage(t) {
       if (HD) return drawStageHD(t);
       fb.clear();
       pavement();
-      draw(mfb, t, view(t));
-      fb.blit(mfb, S.MX, S.MY);
+      const v = view(t);
+      if (showMachine(t)) { draw(mfb, t, v); fb.blit(mfb, S.MX, S.MY + machineDY(t)); }
+      else VT.drawWreck(fb, GEO, t, st.wreck.n);
+      VT.drawDust(fb, GEO, t - arriveAt);
+      if (hatchOdd(t)) VT.drawOddity(fb, HATCH[0], HATCH[1], odd.kind, t);
       // the queue stands at the back, people leaving walk past in front
       const order = st.customers.slice().sort((a, b) => (a.phase === 'leave') - (b.phase === 'leave'));
       for (const c of order) {
         const x = Math.round(c.x), foot = c.phase === 'leave' ? S.H - 3 : S.H - 9;
         const moving = c.phase === 'walk' || c.phase === 'leave';
-        VT.drawPerson(fb, x, foot, c.look, moving ? Math.floor(c.x / 3) & 3 : 0, c.phase === 'use', c.kid);
+        VT.drawPerson(fb, x, foot, c.look, moving ? Math.floor(c.x / 3) & 3 : 0, c.phase === 'use', c.kid, c.charred);
+        if (c.charred) VT.drawSinged(fb, x, foot - (c.kid ? 31 : 37), t);
+        const held = hand(c, t);
+        if (held) VT.drawOddity(fb, held[0], held[1], c.held, t);
         const by = foot - VT.bubbleHeight(c.kid);
         if (c.bubble) VT.drawBubble(fb, x + 1, by, c.bubble, t);
         else if (c.phase === 'use') VT.drawBubble(fb, x + 1, by, 'think', t);
       }
+      if (boom) VT.drawBoom(fb, boom, t - boomAt, S.W, S.H);
       fb.flush();
     }
 
@@ -225,7 +286,7 @@
 
       const full = A.full(st);
       const down = A.down(st);
-      set('state', st.jam ? (K.JAM_STATE || 'JAMMED') : full ? 'BOX FULL' : down ? 'BIN FULL' : 'RUNNING');
+      set('state', st.wreck ? (st.order ? 'ON ITS WAY' : 'WRECKED') : st.jam ? (K.JAM_STATE || 'JAMMED') : full ? 'BOX FULL' : down ? 'BIN FULL' : 'RUNNING');
       $('state').className = 'pill' + (down ? ' alarm' : '');
       moneyTo('wallet', st.wallet); moneyTo('cashbox', st.cashbox);
       $('cashMeter').style.width = Math.min(100, (st.cashbox / K.CASHBOX) * 100) + '%';
@@ -342,6 +403,15 @@
           return li;
         }));
       }
+      // a wreck: nothing to do but order a new machine and wait for it
+      prop('order', 'hidden', !st.wreck);
+      if (st.wreck) {
+        const left = st.order ? Math.max(0, st.order.at - st.t) : 0;
+        set('orderLabel', st.order ? 'ARRIVES IN' : 'NEW MACHINE');
+        set('orderCost', st.order ? (left >= 60 ? Math.floor(left / 60) + 'H ' : '') + Math.ceil(left % 60) + 'M' : VT.money(K.MACHINE));
+        prop('order', 'disabled', !!st.order);
+        for (const id of ['restockAll', 'restock', 'service', 'binAll', 'bin', 'clean', 'drain', 'collect'].concat(SUP.map(k => 'refill-' + k))) prop(id, 'disabled', true);
+      }
       document.querySelectorAll('[data-speed]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.speed === speed)));
       // the sky brightens by day and darkens at night
       const h = A.hour(st), light = Math.max(0, Math.sin((Math.PI * (h - 5)) / 15));
@@ -354,7 +424,7 @@
       if (st.history.length === daysSeen) return;
       daysSeen = st.history.length;
       const d = st.history[st.history.length - 1], el = $('toast');
-      const extra = d.waste ? ` · WASTE ${VT.money(d.waste)}` : '';
+      const extra = (d.waste ? ` · WASTE ${VT.money(d.waste)}` : '') + (d.wreck ? ` · EXPLOSION ${VT.money(d.wreck)}` : '');
       el.innerHTML = `<b>DAY ${d.day} CLOSED</b><span>${d.sold} ${K.ITEMS} · SALES ${VT.money(d.revenue)}</span><span class="${d.profit < 0 ? 'neg' : 'pos'}">PROFIT ${VT.money(d.profit)}</span><small>RENT ${VT.money(d.rent)} PAID${extra}</small>`;
       el.classList.add('show');
       clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
@@ -366,6 +436,7 @@
     on('collect', () => A.collect(st));
     on('restockAll', () => A.restockAll(st));
     on('repair', () => A.repair(st));
+    on('order', () => A.orderMachine(st));
     on('service', () => A.service(st));
     on('binAll', () => A.binAllStale(st));
     on('bin', () => A.binStale(st, sel));
@@ -388,7 +459,8 @@
         return;
       }
       clearTimeout(sure); sure = 0; b.textContent = 'NEW GAME'; b.classList.remove('warn');
-      st = fresh(); sel = 0; lastSale = 0; drop = null; daysSeen = 0; speed = 1;
+      st = fresh(); sel = 0; lastSale = 0; drop = null; odd = null; daysSeen = 0; speed = 1;
+      seenBoom = 0; seenArr = 0; boom = null; arriveAt = -99;
       save(); refresh(true);
     });
 
@@ -410,6 +482,7 @@
       else if (k === 'c' || k === 'C') click('collect');
       else if (k === 'b' || k === 'B') { click('bin'); click('drain'); }
       else if (k === 'g' || k === 'G') click('clean');
+      else if (k === 'o' || k === 'O') click('order');
       else if (k === 's' || k === 'S') click('service');
     });
 
@@ -420,11 +493,14 @@
       last = now;
       if (speed) A.step(st, dt * K.MIN_PER_SEC * speed);
       const t = now / 1000;
+      effects(t);
       scene.draw(t);
       drawStage(t);
       if (now - lastUi > 120) { lastUi = now; refresh(); checkDay(); }
       requestAnimationFrame(frame);
     }
+    // for poking at it from the console
+    VT.game = { A, get st() { return st; }, set speed(v) { speed = v; } };
     refresh(true);
     requestAnimationFrame(frame);
   };

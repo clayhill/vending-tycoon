@@ -109,6 +109,17 @@
       c.strokeStyle = H.INK; c.lineWidth = 0.55; c.beginPath(); mouth(); c.stroke();
     };
     switch (name) {
+      case 'what':
+        c.fillStyle = '#b967ff'; c.font = H.font(7.4, 900); c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+        c.fillText('?', 3.5 + Math.sin(t * 5) * 0.3, 6.6);
+        break;
+      case 'boom': {
+        const k = 1 + Math.sin(t * 18) * 0.08;
+        c.beginPath();
+        for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, r = (i & 1 ? 1.6 : 3.5) * k; c.lineTo(3.5 + Math.cos(a) * r, 3.5 + Math.sin(a) * r); }
+        c.closePath(); c.fillStyle = H.rad(c, 3.5, 3.5, 0, 3.5, [[0, '#fffb96'], [0.5, '#ff9e3d'], [1, '#ff2a6d']]); c.fill();
+        break;
+      }
       case 'love':
         c.fillStyle = H.lin(c, 0, 0, 0, 7, [[0, '#ff71ce'], [1, '#ff2a6d']]);
         c.beginPath(); c.moveTo(3.5, 6.4);

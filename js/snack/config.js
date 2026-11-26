@@ -33,6 +33,9 @@
     ],
     LAYOUT: [0, 0, 3, 3, 1, 1, 2, 2, 0, 4, 4, 1, 5, 2, 3, 1, 0, 5, 4, 2],
     ART: { x: 11, y: 22, dx: 8, dy: 9, w: 7, h: 8 },
+    // a new machine after an explosion: price and minutes to deliver; where
+    // the machine stands (x from–to), its colour and where items come out
+    MACHINE: 160, DELIVERY: 120, FOOT: [6, 57], BODY: '#1186b3', HATCH: [26.5, 77],
     STAGE: { W: 200, H: 104, MX: 70, MY: 4, FRONT: 58, GAP: 17, ENTER: -14, EXIT: 214, QUEUE: 4, WALK: 4, USE: 7 },
   };
 })(typeof window !== 'undefined' ? (window.VT = window.VT || {}) : (globalThis.VT = globalThis.VT || {}));

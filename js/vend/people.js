@@ -31,8 +31,8 @@
   };
 
   const cache = new Map();
-  function sprite(look, step, reach, kid) {
-    const key = look + ':' + step + ':' + reach + ':' + kid;
+  function sprite(look, step, reach, kid, burnt) {
+    const key = look + ':' + step + ':' + reach + ':' + kid + ':' + burnt;
     if (cache.has(key)) return cache.get(key);
     const d = new Uint32Array(W * H);
     const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) d[y * W + x] = c; };
@@ -88,14 +88,22 @@
       if (d[y * W + x]) continue;
       if ((x > 0 && d[y * W + x - 1]) || (x < W - 1 && d[y * W + x + 1]) || (y > 0 && d[(y - 1) * W + x]) || (y < H - 1 && d[(y + 1) * W + x])) out[y * W + x] = INK;
     }
+    // singed by an explosion: sooty all over, but the eyes still blink white
+    if (burnt) {
+      for (let i = 0; i < out.length; i++) if (out[i] && out[i] !== INK) out[i] = VT.mix(out[i], INK, 0.78);
+      const ey = f - 28 + (kid ? KID_DROP : 0);
+      out[ey * W + cx + 2] = WHITE; out[(ey + 1) * W + cx + 2] = WHITE;
+      // hair blown upright
+      for (let i = -3; i <= 3; i += 2) out[(f - 35 + (kid ? KID_DROP : 0)) * W + cx + i] = INK;
+    }
     const spr = { w: W, h: H, d: out };
     cache.set(key, spr);
     return spr;
   }
 
   // a person whose feet stand at (x, foot)
-  VT.drawPerson = function (fb, x, foot, look, step, reach, kid) {
-    fb.blit(sprite(look, step, reach ? 1 : 0, kid ? 1 : 0), x - 9, foot - FOOT);
+  VT.drawPerson = function (fb, x, foot, look, step, reach, kid, burnt) {
+    fb.blit(sprite(look, step, reach ? 1 : 0, kid ? 1 : 0, burnt ? 1 : 0), x - 9, foot - FOOT);
   };
   // how far above the feet a person's bubble goes
   VT.bubbleHeight = kid => 37 - (kid ? KID_DROP : 0);
