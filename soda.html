@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soda Cans — Vending Tycoon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="soda">
+  <canvas id="bg" class="bg" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <main class="screen stage">
+    <a class="back" href="index.html"><kbd>ESC</kbd> BACK</a>
+    <h1 class="logo"><canvas id="logo" role="img" aria-label="Soda Cans"></canvas></h1>
+    <div class="exhibit">
+      <canvas id="machine" role="img" aria-label="A pink soda can vending machine with a neon SODA sign"></canvas>
+      <canvas id="tape" class="tape" role="img" aria-label="Under construction"></canvas>
+    </div>
+    <div class="dialog">
+      <p class="label">STAGE 01 · SODA CANS</p>
+      <p>This machine is still being stocked. Soon you will set prices, restock the shelves and keep the coins rolling in.</p>
+      <p class="blink">COMING SOON</p>
+    </div>
+  </main>
+
+  <script>const s = document.createElement('script'); s.src = 'js/boot.js?t=' + Date.now(); document.body.appendChild(s);</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vending Tycoon</title>
+  <meta name="description" content="Vending Tycoon: a vending machine simulator in vaporwave pixel art. Pick a machine and step up to it.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="landing">
+  <canvas id="bg" class="bg" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <div class="hud" aria-hidden="true">
+    <span>1UP <b class="blink-slow">000000</b></span>
+    <span>HI-SCORE <b>198700</b></span>
+    <span>CREDIT <b id="credit">00</b></span>
+  </div>
+
+  <main class="screen">
+    <h1 class="logo"><canvas id="logo" role="img" aria-label="Vending Tycoon"></canvas></h1>
+    <p class="tag">&lt; SELECT YOUR MACHINE &gt;</p>
+
+    <nav class="select" aria-label="Vending machines">
+      <a class="slot on" href="soda.html">
+        <span class="cursor" aria-hidden="true"></span>
+        <canvas data-art="soda" role="img" aria-label="A pink soda can vending machine with a neon SODA sign"></canvas>
+        <span class="label">SODA CANS</span>
+        <span class="meta">12 SLOTS · COLD DRINKS</span>
+      </a>
+      <button class="slot locked" type="button" aria-disabled="true">
+        <span class="cursor" aria-hidden="true"></span>
+        <canvas data-art="snack" role="img" aria-label="A locked machine, shown as a dark silhouette"></canvas>
+        <span class="label">???</span>
+        <span class="meta">LOCKED</span>
+      </button>
+      <button class="slot locked" type="button" aria-disabled="true">
+        <span class="cursor" aria-hidden="true"></span>
+        <canvas data-art="gumball" role="img" aria-label="A locked machine, shown as a dark silhouette"></canvas>
+        <span class="label">???</span>
+        <span class="meta">LOCKED</span>
+      </button>
+      <button class="slot locked" type="button" aria-disabled="true">
+        <span class="cursor" aria-hidden="true"></span>
+        <canvas data-art="coffee" role="img" aria-label="A locked machine, shown as a dark silhouette"></canvas>
+        <span class="label">???</span>
+        <span class="meta">LOCKED</span>
+      </button>
+    </nav>
+
+    <p class="status" id="status" role="status" aria-live="polite"><span class="blink">PRESS ENTER</span></p>
+
+    <footer class="keys">
+      <span><kbd>◀</kbd><kbd>▶</kbd> SELECT</span>
+      <span><kbd>ENTER</kbd> START</span>
+      <button class="coin" id="coin" type="button"><kbd>C</kbd> INSERT COIN</button>
+    </footer>
+  </main>
+
+  <!-- js/boot.js loads the scripts; fetched fresh so it is never a cached copy -->
+  <script>const s = document.createElement('script'); s.src = 'js/boot.js?t=' + Date.now(); document.body.appendChild(s);</script>
+</body>
+</html>

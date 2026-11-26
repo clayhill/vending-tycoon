@@ -1,0 +1,132 @@
+/* Vending Tycoon — vaporwave arcade. Every edge is a whole number of art
+ * pixels (--px, set from the viewport by the scripts), and nothing is round. */
+:root {
+  --px: 3px;
+  --ink: #0d0221;
+  --deep: #1a0536;
+  --violet: #2b0a4f;
+  --plum: #5a2d8a;
+  --pink: #ff71ce;
+  --hot: #ff2a6d;
+  --cyan: #01cdfe;
+  --mint: #05ffa1;
+  --lav: #b967ff;
+  --sun: #fffb96;
+  --text: #f1e6ff;
+  --dim: #b49ad6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #06011a; color: var(--text); }
+body { font: 22px/1.15 'VT323', ui-monospace, monospace; overflow-x: hidden; -webkit-font-smoothing: none; }
+canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+kbd, .label, .hud, .tag, .status, .keys, .back { font-family: 'Press Start 2P', ui-monospace, monospace; }
+
+.bg { position: fixed; left: 0; top: 0; z-index: 0; }
+/* scanlines and a CRT vignette over everything */
+.crt {
+  position: fixed; inset: 0; z-index: 20; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(5, 0, 15, .65) 100%);
+}
+
+.hud {
+  position: relative; z-index: 2; display: flex; justify-content: space-between; gap: 16px;
+  padding: 12px 16px 0; font-size: 10px; color: var(--pink); letter-spacing: 1px; text-shadow: 2px 2px 0 var(--ink);
+}
+.hud b { color: var(--text); font-weight: normal; }
+
+.screen {
+  position: relative; z-index: 1; min-height: calc(100vh - 30px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: calc(var(--px) * 5); padding: 16px 16px 24px;
+}
+.logo { margin: 0; filter: drop-shadow(0 0 calc(var(--px) * 6) rgba(255, 42, 109, .35)); }
+.tag {
+  margin: 0; font-size: calc(var(--px) * 4); color: var(--cyan); letter-spacing: 2px;
+  text-shadow: var(--px) var(--px) 0 var(--ink), 0 0 12px rgba(1, 205, 254, .6);
+}
+
+/* machine select: pixel frames with notched corners */
+.select { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--px) * 6); padding-top: calc(var(--px) * 6); }
+.slot {
+  --edge: var(--plum);
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: calc(var(--px) * 3);
+  margin: var(--px); padding: calc(var(--px) * 5) calc(var(--px) * 4) calc(var(--px) * 4);
+  border: 0; font: inherit; color: inherit; text-decoration: none; cursor: pointer;
+  background: repeating-conic-gradient(#170433 0 25%, #12032a 0 50%) 0 0 / calc(var(--px) * 2) calc(var(--px) * 2);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--edge), 0 var(--px) 0 0 var(--edge),
+    calc(var(--px) * -1) 0 0 0 var(--edge), var(--px) 0 0 0 var(--edge),
+    inset 0 var(--px) 0 0 rgba(255, 255, 255, .1), inset 0 calc(var(--px) * -1) 0 0 rgba(0, 0, 0, .45),
+    calc(var(--px) * 2) calc(var(--px) * 3) 0 0 rgba(5, 0, 15, .55);
+  outline: none;
+}
+.slot canvas { transition: transform 0s; }
+.slot .label { font-size: calc(var(--px) * 3.5); color: var(--text); text-shadow: var(--px) var(--px) 0 var(--ink); }
+.slot .meta { font-size: 18px; color: var(--dim); letter-spacing: 1px; }
+.slot.on { --edge: var(--cyan); background-color: #1d0640; }
+.slot.on canvas { transform: translateY(calc(var(--px) * -2)); }
+.slot.on .label { color: var(--sun); }
+.slot.on:not(.locked) .meta { color: var(--mint); }
+.slot.locked .label { color: var(--dim); }
+.slot.locked.on { --edge: var(--pink); }
+.cursor {
+  position: absolute; left: 50%; top: calc(var(--px) * -12); translate: -50% 0; visibility: hidden;
+  animation: bob .6s steps(2, jump-none) infinite alternate;
+}
+.slot.on .cursor { visibility: visible; }
+@keyframes bob { to { transform: translateY(calc(var(--px) * 2)); } }
+.slot.shake { animation: shake .32s steps(4) 1; }
+@keyframes shake { 25% { transform: translateX(calc(var(--px) * -2)); } 50% { transform: translateX(calc(var(--px) * 2)); } 75% { transform: translateX(calc(var(--px) * -1)); } }
+
+.status { margin: 0; min-height: 1.5em; font-size: calc(var(--px) * 3.5); color: var(--sun); text-shadow: var(--px) var(--px) 0 var(--hot); }
+.status.warn { color: var(--pink); text-shadow: var(--px) var(--px) 0 var(--ink); }
+.blink { animation: blink 1.1s steps(1) infinite; }
+.blink-slow { animation: blink 2.4s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 28px; font-size: 10px; color: var(--dim); }
+.keys span, .coin { display: inline-flex; align-items: center; gap: 6px; }
+.coin { border: 0; padding: 0; background: none; font: inherit; color: var(--pink); cursor: pointer; }
+.coin:hover, .coin:focus-visible { color: var(--sun); outline: none; }
+kbd {
+  display: inline-block; padding: 4px 6px 3px; font-size: 9px; color: var(--ink); background: var(--text);
+  box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink), inset 0 -2px 0 0 var(--dim);
+}
+
+/* entering a machine: the screen flashes and warps */
+body.warp .screen { animation: warp .45s steps(6) forwards; }
+@keyframes warp { 40% { filter: brightness(2.5) saturate(0); } 100% { filter: brightness(4); transform: scale(1.15); opacity: 0; } }
+
+/* the machine's own screen */
+.stage { gap: calc(var(--px) * 5); }
+.back {
+  position: absolute; left: 16px; top: 16px; display: inline-flex; gap: 8px; align-items: center;
+  font-size: 10px; color: var(--pink); text-decoration: none; text-shadow: 2px 2px 0 var(--ink);
+}
+.back:hover, .back:focus-visible { color: var(--sun); outline: none; }
+.exhibit { position: relative; display: grid; place-items: center; filter: drop-shadow(0 0 calc(var(--px) * 8) rgba(255, 42, 109, .45)); }
+.tape { position: absolute; top: 46%; rotate: -8deg; }
+.dialog {
+  max-width: 560px; margin: var(--px); padding: calc(var(--px) * 4) calc(var(--px) * 5);
+  background: rgba(13, 2, 33, .9); text-align: center;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--cyan), 0 var(--px) 0 0 var(--cyan),
+    calc(var(--px) * -1) 0 0 0 var(--cyan), var(--px) 0 0 0 var(--cyan),
+    calc(var(--px) * 2) calc(var(--px) * 3) 0 0 rgba(5, 0, 15, .55);
+}
+.dialog p { margin: 0 0 10px; }
+.dialog .label { font-size: calc(var(--px) * 3); color: var(--sun); }
+.dialog .blink { margin: 0; font-family: 'Press Start 2P', monospace; font-size: calc(var(--px) * 3); color: var(--pink); }
+
+@media (max-width: 520px) {
+  body { font-size: 20px; }
+  .hud { font-size: 8px; }
+  .hud span:nth-child(2) { display: none; }
+  .back { position: static; align-self: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blink, .blink-slow, .cursor, .slot.shake { animation: none; }
+}
